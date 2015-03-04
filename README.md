@@ -1,2 +1,2 @@
 # osm-lib
-A library for opening and manipulating OSM files of any size.
+A library for random entity access inside OSM files of any size.
