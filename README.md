@@ -3,8 +3,8 @@ A library for random entity access inside OSM files of any size.
 
 ## build
 
-$ gradle jar
+$ mvn package
 
 ## run
 
-$ java -jar build/libs/osm-lib.jar
+$ java -cp target/osm-lib-1.0-SNAPSHOT.jar com.conveyal.osmlib.App
