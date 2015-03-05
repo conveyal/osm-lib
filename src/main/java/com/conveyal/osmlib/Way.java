@@ -2,7 +2,7 @@ package com.conveyal.osmlib;
 
 import java.io.Serializable;
 
-public class Way extends Tagged implements Serializable {
+public class Way extends OSMEntity implements Serializable {
 
     private static final long serialVersionUID = 1L;
 

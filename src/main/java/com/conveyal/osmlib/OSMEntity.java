@@ -5,7 +5,7 @@ import com.beust.jcommander.internal.Lists;
 import java.io.Serializable;
 import java.util.List;
 
-public abstract class Tagged implements Serializable {
+public abstract class OSMEntity implements Serializable {
 
     private static final long serialVersionUID = 1L;
 

@@ -2,26 +2,26 @@ package com.conveyal.osmlib;
 
 import junit.framework.TestCase;
 
-public class TaggedTest extends TestCase{
+public class OSMEntityTest extends TestCase{
     /**
      * Create the test case
      *
      * @param testName name of the test case
      */
-    public TaggedTest( String testName )
+    public OSMEntityTest( String testName )
     {
         super( testName );
     }
     
     public void testCreateTag()
     {
-        Tagged.Tag tag = new Tagged.Tag("key","value");
+        OSMEntity.Tag tag = new OSMEntity.Tag("key","value");
         assertEquals( tag.key, "key" );
         assertEquals( tag.value, "value" );
     }
     
     public void testTagged(){
-    	class TaggedTester extends Tagged{
+    	class TaggedTester extends OSMEntity{
 			private static final long serialVersionUID = 1L;}
     	
     	TaggedTester tt = new TaggedTester();
