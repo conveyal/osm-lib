@@ -22,7 +22,13 @@ public class OSMEntityTest extends TestCase{
     
     public void testTagged(){
     	class TaggedTester extends OSMEntity{
-			private static final long serialVersionUID = 1L;}
+			private static final long serialVersionUID = 1L;
+
+			@Override
+			public Type getType() {
+				// TODO Auto-generated method stub
+				return null;
+			}}
     	
     	TaggedTester tt = new TaggedTester();
     	assertTrue( tt.hasNoTags() );

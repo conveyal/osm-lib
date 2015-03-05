@@ -15,6 +15,10 @@ public abstract class OSMEntity implements Serializable {
     // http://wiki.openstreetmap.org/wiki/Talk:Semi-colon_value_separator
     // Implementing a Set<Pair<String>> with a single string is not necessarily a good idea...
 
+    public static enum Type {
+        NODE, WAY, RELATION;
+    }
+    
     public List<Tag> tags;
 
     public static class Tag implements Serializable {
@@ -76,5 +80,7 @@ public abstract class OSMEntity implements Serializable {
         }
         tags.add(new Tag(key, value));
     }
+    
+    public abstract Type getType();
 
 }
