@@ -13,9 +13,9 @@ public class Way extends OSMEntity implements Serializable {
         return String.format("Way with %d tags and %d nodes", tags.size(), nodes.length);
     }
 
-	@Override
-	public Type getType() {
-		return OSMEntity.Type.WAY;
-	}
+    @Override
+    public Type getType() {
+        return Type.WAY;
+    }
     
 }

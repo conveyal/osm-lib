@@ -1,11 +1,10 @@
 package com.conveyal.osmlib;
 
-import java.util.Map;
-
+import com.google.common.collect.Maps;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.google.common.collect.Maps;
+import java.util.Map;
 
 /** 
  * A sparse bit set capable of handling 64-bit int indexes (like OSM IDs).

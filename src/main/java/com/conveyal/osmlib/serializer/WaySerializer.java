@@ -1,8 +1,7 @@
 package com.conveyal.osmlib.serializer;
 
-import org.mapdb.Serializer;
-
 import com.conveyal.osmlib.Way;
+import org.mapdb.Serializer;
 
 import java.io.DataInput;
 import java.io.DataOutput;
@@ -12,9 +11,8 @@ import java.io.Serializable;
 /** Ideally, these serializers would be the same ones used in the VEX binary exchange format. */
 public class WaySerializer implements Serializer<Way>, Serializable {
 
-	private static final long serialVersionUID = -6262949072197346414L;
-
-	/** Delta-code the series of node references, and write out all values as varints. */
+    /** Delta-code the series of node references, and write out all values as varints. */
+    @Override
     public void serialize(DataOutput out, Way way) throws IOException {
         VarInt.writeRawVarint32(out, way.nodes.length);
         long lastNodeId = 0;
@@ -26,6 +24,7 @@ public class WaySerializer implements Serializer<Way>, Serializable {
         VarInt.writeTags(out, way);
     }
 
+    @Override
     public Way deserialize(DataInput in, int available) throws IOException {
         Way way = new Way();
         int nNodes = VarInt.readRawVarint32(in);
@@ -39,6 +38,7 @@ public class WaySerializer implements Serializer<Way>, Serializable {
         return way;
     }
 
+    @Override
     public int fixedSize() { return -1; }
 
 }

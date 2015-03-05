@@ -13,17 +13,16 @@ package com.conveyal.osmlib;
  * not, see <http://www.gnu.org/licenses/>.
  */
 
+import com.conveyal.osmlib.OSMEntity.Type;
 import crosby.binary.BinaryParser;
 import crosby.binary.Osmformat;
 import crosby.binary.file.BlockInputStream;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.conveyal.osmlib.OSMEntity.Type;
-
 import java.io.FileInputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.util.List;
 
 /**
@@ -36,27 +35,24 @@ import java.util.List;
  * Subclasses of Parser that wish to skip certain OSM element types should override parseWays,
  * parseDense, etc. rather than the corresponding handle* methods to avoid ever converting the
  * low-level PBF objects into objects using OTP's internal OSM model.
+ * 
+ * There is no need to internalize strings. They will be serialized out to disk separately anyway.
  */
 public class Parser extends BinaryParser {
 
     protected static final Logger LOG = LoggerFactory.getLogger(Parser.class);
 
-    OSM osm;
-    // no need to internalize strings. they will be serialized out to disk anyway.
-    // private Map<String, String> stringTable = new HashMap<String, String>();    
-    long nodeCount = 0;
-    long wayCount = 0;
+    protected OSM osm;
+    private long nodeCount = 0;
+    private long wayCount = 0;
 
+    /** Construct a new OSM PBF parser loading entities into a temporary file backed data store. */
     public Parser () {
         osm = new OSM(null);
     }
 
-    public Parser (String diskPath) {
-        osm = new OSM(diskPath);
-    }
-    
-    public Parser (OSM osm){
-    	this.osm = osm;
+    public Parser (OSM osm) {
+        this.osm = osm;
     }
 
     private static final String[] retainKeys = new String[] {
@@ -199,6 +195,7 @@ public class Parser extends BinaryParser {
         }
     }
 
+    @Override
     public void complete() {
         LOG.info("Done parsing PBF.");
     }
@@ -222,7 +219,16 @@ public class Parser extends BinaryParser {
             throw new RuntimeException("Error parsing OSM PBF.", e);
         }
     }
-    
+
+    /** Run this parser on the given input stream. */
+    public void parse(InputStream inputStream) {
+        try {
+            new BlockInputStream(inputStream, this).process();
+        } catch (IOException e) {
+            throw new RuntimeException("Error parsing OSM PBF.", e);
+        }
+    }
+
     /** 
      * Override this method to tell the parser what to do to with each node,
      * once it has been parsed into OTP's internal OSM model.

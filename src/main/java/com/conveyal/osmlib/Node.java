@@ -8,8 +8,7 @@ public class Node extends OSMEntity implements Serializable {
 
     private static final double FIXED_PRECISION_FACTOR = 1e6;
 
-    public Node () { 
-    }
+    public Node () { }
 
     public Node (double lat, double lon) {
         setLatLon(lat, lon);
@@ -28,13 +27,13 @@ public class Node extends OSMEntity implements Serializable {
         this.fixedLon = (int)(lon * FIXED_PRECISION_FACTOR);
     }
 
-	@Override
-	public Type getType() {
-		return OSMEntity.Type.WAY;
-	}
-	
-	public String toString(){
-		return "[Node "+getLat()+" "+getLon()+"]";
-	}
+    @Override
+    public Type getType() {
+        return Type.NODE;
+    }
 
+    public String toString() {
+        return "[Node "+getLat()+" "+getLon()+"]";
+    }
+    
 }

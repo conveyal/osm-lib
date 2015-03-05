@@ -9,15 +9,11 @@ public class Relation extends OSMEntity implements Serializable {
 
     private static final long serialVersionUID = 1L;
 
-//    Node nodes;
-//    Way ways;
-//    Relation relations;
-
     public List<Member> members = Lists.newArrayList();
-    
+
     public static class Member implements Serializable {
         private static final long serialVersionUID = 1L;
-        public Type type;
+        public OSMEntity.Type type;
         public long id;
         public String role;
         @Override
@@ -41,8 +37,9 @@ public class Relation extends OSMEntity implements Serializable {
         return sb.toString();
     }
 
-	@Override
-	public Type getType() {
-		return OSMEntity.Type.RELATION;
-	}
+    @Override
+    public Type getType() {
+        return Type.RELATION;
+    }
+
 }

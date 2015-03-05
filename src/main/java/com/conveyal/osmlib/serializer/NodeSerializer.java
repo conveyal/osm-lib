@@ -1,8 +1,7 @@
 package com.conveyal.osmlib.serializer;
 
-import org.mapdb.Serializer;
-
 import com.conveyal.osmlib.Node;
+import org.mapdb.Serializer;
 
 import java.io.DataInput;
 import java.io.DataOutput;
@@ -11,12 +10,14 @@ import java.io.Serializable;
 
 public class NodeSerializer implements Serializer<Node>, Serializable {
 
+    @Override
     public void serialize(DataOutput out, Node node) throws IOException {
         out.writeInt(node.fixedLat);
         out.writeInt(node.fixedLon);
         VarInt.writeTags(out, node);
     }
 
+    @Override
     public Node deserialize(DataInput in, int available) throws IOException {
         Node node = new Node();
         node.fixedLat = in.readInt();
@@ -25,6 +26,7 @@ public class NodeSerializer implements Serializer<Node>, Serializable {
         return node;
     }
 
+    @Override
     public int fixedSize() {
         return -1;
     }
