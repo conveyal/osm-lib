@@ -99,7 +99,7 @@ public class OSM {
     // boolean filterTags
     public static OSM fromPBF(String pbfFile) {
         LOG.info("Reading entire PBF file '{}'", pbfFile);
-        Parser parser = new Parser(null);
+        Parser parser = new Parser();
         parser.parse(pbfFile);
         return parser.osm;
     }

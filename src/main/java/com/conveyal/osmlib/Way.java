@@ -10,7 +10,7 @@ public class Way extends OSMEntity implements Serializable {
     
     @Override
     public String toString() {
-        return String.format("Way with tags %s and nodes %s", tags, nodes);
+        return String.format("Way with %d tags and %d nodes", tags.size(), nodes.length);
     }
 
 	@Override

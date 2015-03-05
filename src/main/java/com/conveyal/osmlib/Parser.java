@@ -54,6 +54,10 @@ public class Parser extends BinaryParser {
     public Parser (String diskPath) {
         osm = new OSM(diskPath);
     }
+    
+    public Parser (OSM osm){
+    	this.osm = osm;
+    }
 
     private static final String[] retainKeys = new String[] {
         "highway", "parking", "bicycle", "name"

@@ -32,5 +32,9 @@ public class Node extends OSMEntity implements Serializable {
 	public Type getType() {
 		return OSMEntity.Type.WAY;
 	}
+	
+	public String toString(){
+		return "[Node "+getLat()+" "+getLon()+"]";
+	}
 
 }
