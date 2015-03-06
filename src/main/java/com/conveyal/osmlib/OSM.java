@@ -69,6 +69,10 @@ public class OSM {
                 .closeOnJvmShutdown()
                 .make();
 
+        if (db.getAll().isEmpty()) {
+            LOG.info("No OSM tables exist yet, they will be created.");
+        }
+        
         nodes = db.createTreeMap("nodes")
                 .keySerializer(BTreeKeySerializer.ZERO_OR_POSITIVE_LONG)
                 .valueSerializer(new NodeSerializer())
