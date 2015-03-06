@@ -70,21 +70,25 @@ public class OSM {
                 .make();
 
         nodes = db.createTreeMap("nodes")
+                .keySerializer(BTreeKeySerializer.ZERO_OR_POSITIVE_LONG)
                 .valueSerializer(new NodeSerializer())
-                .makeLongMap();
+                .makeOrGet();
         
         ways =  db.createTreeMap("ways")
+                .keySerializer(BTreeKeySerializer.ZERO_OR_POSITIVE_LONG)
                 .valueSerializer(new WaySerializer())
-                .makeLongMap();
-        
+                .makeOrGet();
+                
         relations = db.createTreeMap("relations")
-                .makeLongMap();
+                .keySerializer(BTreeKeySerializer.ZERO_OR_POSITIVE_LONG)
+                .makeOrGet();
 
         // Serializer delta-compresses the tuple as a whole and variable-width packs ints,
         // but does not recursively delta-code its elements.
         index = db.createTreeSet("spatial_index")
                 .serializer(BTreeKeySerializer.TUPLE3) 
-                .make();
+                .makeOrGet();
+        
     }
     
     // boolean to filter entities on tags, or list of tag keys to retain?
