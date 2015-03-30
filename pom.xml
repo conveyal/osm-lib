@@ -10,9 +10,9 @@
 
   <!-- Define where the source code for this project lives -->
   <scm>
-    <connection>scm:git:http://github.com/conveyal/osm-lib.git</connection>
+    <connection>scm:git:https://github.com/conveyal/osm-lib.git</connection>
     <developerConnection>scm:git:ssh://git@github.com/conveyal/osm-lib.git</developerConnection>
-    <url>https://github.com/conveyal/osm-lib</url>
+    <url>https://github.com/conveyal/osm-lib.git</url>
   </scm>
 
   <!-- Define where the artifacts produced by this build will be deployed -->
@@ -24,7 +24,7 @@
       <url>s3://maven.conveyal.com/</url>
     </repository>
   </distributionManagement>
-  
+
   <build>
     <plugins>
       <plugin>
