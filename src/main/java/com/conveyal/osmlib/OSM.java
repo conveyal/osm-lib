@@ -4,7 +4,6 @@ import com.conveyal.osmlib.serializer.NodeSerializer;
 import com.conveyal.osmlib.serializer.WaySerializer;
 import com.google.common.base.Charsets;
 import com.google.common.primitives.Longs;
-import com.vividsolutions.jts.geom.Envelope;
 import org.mapdb.BTreeKeySerializer;
 import org.mapdb.DB;
 import org.mapdb.DBMaker;
@@ -12,7 +11,14 @@ import org.mapdb.Fun.Tuple3;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.*;
+import java.io.BufferedReader;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileNotFoundException;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.io.Reader;
 import java.util.ArrayList;
 import java.util.Map;
 import java.util.NavigableSet;
@@ -113,26 +119,7 @@ public class OSM {
         }
     }
 
-    // TODO we know that the ordering of entity types within a PBF file is almost always nodes, then ways,
-    // then relations. Here we are doing three passes over the whole file, but we could get away with one
-    // and a half by combining the NodeGeomFilter and the WayLoader, then bailing out of the NodeLoader
-    // as soon as it sees a Way.
-    // In any case we can't spatially filter PBF data coming from a stream because we'd need to backtrack.
-    public void loadFromPBF (String pbfFile, Envelope env) {
-        LOG.info("Reading PBF file '{}' filtering with envelope {}", pbfFile, env);
-        LOG.info("Finding nodes within the bounding geometry.");
-        NodeGeomFilter ngf = new NodeGeomFilter(env);
-        ngf.parse(pbfFile);
-        LOG.info("LOAD RELATIONS HERE");
-        LOG.info("Loading ways containing nodes found within the bounding geometry.");
-        WayLoader wl = new WayLoader(this, ngf.nodesInGeom);
-        wl.parse(pbfFile);
-        LOG.info("Loading nodes used in the retained ways.");
-        NodeLoader nl = new NodeLoader(this, wl.nodesInWays);
-        nl.parse(pbfFile);
-    }
-
-    /** 
+    /**
      * Decode OSM gzipped text format produced by Vanilla Extract.
      * It remains to be determined whether this VEX text format is better or worse than the slightly 
      * more complicated VEX binary format, but it's certainly simpler and cleaner than PBF.

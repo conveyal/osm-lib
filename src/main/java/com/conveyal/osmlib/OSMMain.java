@@ -1,15 +1,15 @@
 package com.conveyal.osmlib;
 
 import com.google.common.collect.HashMultimap;
-import com.google.common.collect.Lists;
 import com.google.common.collect.Multimap;
 import com.vividsolutions.jts.geom.Envelope;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.*;
-import java.util.List;
-import java.util.Map.Entry;
+import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.io.OutputStream;
 
 /**
  * A proof of concept for loading OSM data from PBF into MapDB, then finding intersections and generating edges from
@@ -65,41 +65,5 @@ public class OSMMain {
             LOG.info("{} = {}", k, kv.get(k));
         }
     }
-
-    public static List<Edge> makeEdges(OSM osm) {
-//        osm.findIntersections();
-        LOG.info("Making edges from Ways.");
-        List<Edge> edges = Lists.newArrayList();
-        for (Entry<Long, Way> e : osm.ways.entrySet()) {
-            Way way = e.getValue();
-            Edge edge = new Edge();
-            edge.way = e.getKey();
-            edge.from = way.nodes[0];
-            for (int n = 1; n < way.nodes.length; n++) {
-                long node = way.nodes[n];
-                if (n == (way.nodes.length - 1)) {
-                    edge.to = node;
-                    edges.add(edge);
-//                } else if (osm.intersections.contains(node)) {
-                    edge.to = node;
-                    edges.add(edge);
-                    edge = new Edge();
-                    edge.way = e.getKey();
-                    edge.from = node;
-                }
-            }
-        }
-        LOG.info("Done making {} edges from {} ways.", edges.size(), osm.ways.size());        
-        return edges;
-    }
-    
-    /** As a test, find a certain tag on ways. */
-    public static void findTracks(OSM osm) {
-        for (Entry<Long, Way> e : osm.ways.entrySet()) {
-            if ("track".equals(e.getValue().getTag("highway"))) {
-                LOG.info("{} is a track.", e.getKey());
-            }
-        }
-    }    
 
 }
