@@ -42,7 +42,7 @@ public class Parser extends BinaryParser {
 
     protected static final Logger LOG = LoggerFactory.getLogger(Parser.class);
 
-    protected OSM osm;
+    public final OSM osm;
     private long nodeCount = 0;
     private long wayCount = 0;
 

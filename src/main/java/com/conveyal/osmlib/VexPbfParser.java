@@ -52,7 +52,7 @@ public class VexPbfParser extends Parser {
 
         //http://www.maptiler.org/google-maps-coordinates-tile-bounds-projection/
         public final int ZOOM = 14;
-        final int xtile, ytile;
+        public final int xtile, ytile;
 
         /** Tile definition equations from: TODO URL */
         public WebMercatorTile(double lat, double lon) {

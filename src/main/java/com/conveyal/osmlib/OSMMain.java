@@ -48,9 +48,9 @@ public class OSMMain {
             new VexFormatCodec().writeVex(osm, fout);
             LOG.info("end writing vex");
         } catch (FileNotFoundException ex) {
-            LOG.error("FNFEX");
+            LOG.error("File not found exception");
         } catch (IOException ex) {
-            LOG.error("IOEX");
+            LOG.error("IO exception");
         }
         System.exit(0);
 
