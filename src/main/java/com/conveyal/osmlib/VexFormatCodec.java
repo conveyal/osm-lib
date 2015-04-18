@@ -161,11 +161,16 @@ public class VexFormatCodec {
 
     public void writeTags (OSMEntity tagged) throws IOException {
         List<OSMEntity.Tag> tags = tagged.tags;
-        vout.writeUInt32NoTag(tags.size());
-        for (OSMEntity.Tag tag : tagged.tags) {
-            if (tag.value == null) tag.value = "";
-            vout.writeStringNoTag(tag.key);
-            vout.writeStringNoTag(tag.value);
+        // TODO This could stand a little more abstraction, like List<Tag> getTags()
+        if (tagged.tags == null) {
+            vout.writeUInt32NoTag(0);
+        } else {
+            vout.writeUInt32NoTag(tags.size());
+            for (OSMEntity.Tag tag : tagged.tags) {
+                if (tag.value == null) tag.value = "";
+                vout.writeStringNoTag(tag.key);
+                vout.writeStringNoTag(tag.value);
+            }
         }
     }
 
