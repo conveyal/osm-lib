@@ -39,11 +39,11 @@ public class OSMMain {
     private static final Logger LOG = LoggerFactory.getLogger(OSMMain.class);
     static final Envelope ENV = new Envelope(4.4, 5.5, 52.2, 53.3);
 
+    /** This main method will convert a PBF file to VEX using an intermediate MapDB datastore. */
     public static void main(String[] args) {
-        /** This main method will convert a PBF file to VEX using an intermediate MapDB datastore. */
         OSM osm = new OSM(null);  //, ENV);
         osm.loadFromPBFFile(args[0]);
-        try (OutputStream fout = new FileOutputStream("test.vex")) {
+        try (OutputStream fout = new FileOutputStream(args[1])) {
             LOG.info("begin writing vex");
             new VexFormatCodec().writeVex(osm, fout);
             LOG.info("end writing vex");
@@ -51,21 +51,6 @@ public class OSMMain {
             LOG.error("File not found exception");
         } catch (IOException ex) {
             LOG.error("IO exception");
-        }
-        System.exit(0);
-
-        List<Edge> edges = makeEdges(osm);
-        PrintStream ps;
-        try {
-            ps = new PrintStream(new FileOutputStream("/home/abyrd/edges.wkt"));
-            for (Edge edge : edges) {
-                Node fromNode = osm.nodes.get(edge.from);
-                Node toNode = osm.nodes.get(edge.to);
-                ps.printf("LINESTRING(%f %f,%f %f))\n", fromNode.getLon(), fromNode.getLat(), toNode.getLon(), toNode.getLat());
-            }   
-        } catch (FileNotFoundException e1) {
-            // TODO Auto-generated catch block
-            e1.printStackTrace();
         }
     }
 
