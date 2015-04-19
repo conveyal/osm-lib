@@ -66,11 +66,14 @@ public class OSM {
         }
         
         // Compression has no appreciable effect on speed but reduces file size by about 16 percent.
-        
+        // Hash table cache (eviction by collision) is on by default with a size of 32k records.
+        // http://www.mapdb.org/doc/caches.html
+        // Our objects do not have semantic hash and equals functions, but I suppose it's the table keys that are hashed
+        // not the values.
         db = dbMaker.asyncWriteEnable()
                 .transactionDisable()
+                //.cacheDisable()
                 .compressionEnable()
-                .cacheSize(50 * 1024 * 1024)
                 .mmapFileEnableIfSupported()
                 .closeOnJvmShutdown()
                 .make();

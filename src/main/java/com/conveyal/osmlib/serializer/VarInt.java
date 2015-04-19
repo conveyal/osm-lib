@@ -228,6 +228,7 @@ public class VarInt {
             writeRawVarint32(out, 0);
             return;
         }
+        writeRawVarint32(out, tagged.tags.size());
         for (OSMEntity.Tag tag : tagged.tags) {
             writeString(out, tag.key);
             writeString(out, tag.value);
