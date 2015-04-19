@@ -41,12 +41,25 @@ public class OSMMain {
 
     /** This main method will convert a PBF file to VEX using an intermediate MapDB datastore. */
     public static void main(String[] args) {
-        OSM osm = new OSM(null);  //, ENV);
-        osm.loadFromPBFFile(args[0]);
-        try (OutputStream fout = new FileOutputStream(args[1])) {
-            LOG.info("begin writing vex");
+        if (args.length < 1) {
+            System.err.println("usage: OSMMain input.pbf [output.vex] [/path/to/storage.file]");
+            System.exit(0);
+        }
+        String inputLocation = args[0];
+        String outputLocation = "out.vex";
+        if (args.length > 1) {
+            outputLocation = args[1];
+        }
+        String storageLocation = null;
+        if (args.length > 2) {
+            storageLocation = args[2];
+        }
+        OSM osm = new OSM(storageLocation); // null will use a temp file
+        osm.loadFromPBFFile(inputLocation);
+        try (OutputStream fout = new FileOutputStream(outputLocation)) {
+            LOG.info("writing vex to '{}'...", outputLocation);
             new VexFormatCodec().writeVex(osm, fout);
-            LOG.info("end writing vex");
+            LOG.info("done writing vex.");
         } catch (FileNotFoundException ex) {
             LOG.error("File not found exception");
         } catch (IOException ex) {
