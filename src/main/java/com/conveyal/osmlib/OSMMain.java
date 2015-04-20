@@ -59,6 +59,10 @@ public class OSMMain {
         try (OutputStream fout = new FileOutputStream(outputLocation)) {
             LOG.info("writing vex to '{}'...", outputLocation);
             new VexFormatCodec().writeVex(osm, fout);
+// TODO put this in a similar function to writeVex
+//            OutputStream gzout = new GZIPOutputStream(fout);
+//            new OSMTextOutput(gzout, osm).printAllWays();
+//            gzout.close();
             LOG.info("done writing vex.");
         } catch (FileNotFoundException ex) {
             LOG.error("File not found exception");

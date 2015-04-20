@@ -68,4 +68,11 @@ public class OSMTextOutput {
             print.print(";");
         }
     }
+
+    public void printAllWays() {
+        for (long wayId : osm.ways.keySet()) {
+            printWay(wayId);
+        }
+    }
+
 }
