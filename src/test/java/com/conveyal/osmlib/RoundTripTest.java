@@ -31,7 +31,7 @@ public class RoundTripTest extends TestCase {
         codec = new VexFormatCodec();
         codec.readVex(new FileInputStream(vexFile), osmCopy);
 
-        // Compare PBF data to VEX data using Map.equals() which checks whether two maps have the same entrySet.
+        // Compare PBF data to VEX data
         compareMap(osmOriginal.nodes, osmCopy.nodes);
         compareMap(osmOriginal.ways, osmCopy.ways);
         compareMap(osmOriginal.relations, osmCopy.relations);
