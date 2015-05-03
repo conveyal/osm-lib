@@ -3,6 +3,7 @@ package com.conveyal.osmlib;
 import com.google.common.collect.Lists;
 
 import java.io.Serializable;
+import java.util.Arrays;
 import java.util.List;
 
 public class Relation extends OSMEntity implements Serializable {
@@ -12,10 +13,12 @@ public class Relation extends OSMEntity implements Serializable {
     public List<Member> members = Lists.newArrayList();
 
     public static class Member implements Serializable {
+
         private static final long serialVersionUID = 1L;
         public OSMEntity.Type type;
         public long id;
         public String role;
+
         @Override
         public String toString() {
             StringBuilder sb = new StringBuilder();
@@ -28,6 +31,16 @@ public class Relation extends OSMEntity implements Serializable {
             }
             return sb.toString();
         }
+
+        @Override
+        public boolean equals (Object other) {
+            if (!(other instanceof Member)) return false;
+            Member otherMember = (Member) other;
+            return this.type == otherMember.type &&
+                   this.id == otherMember.id &&
+                   this.role.equals(otherMember.role);
+        }
+
     }
     
     @Override
@@ -43,6 +56,13 @@ public class Relation extends OSMEntity implements Serializable {
         }
         sb.append('\n');
         return sb.toString();
+    }
+
+    @Override
+    public boolean equals(Object other) {
+        if ( ! (other instanceof Relation)) return false;
+        Relation otherRelation = (Relation) other;
+        return this.members.equals(otherRelation.members) && this.tagsEqual(otherRelation);
     }
 
     @Override

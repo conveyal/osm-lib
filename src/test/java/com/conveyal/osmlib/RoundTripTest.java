@@ -6,6 +6,7 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.OutputStream;
+import java.util.Map;
 
 public class RoundTripTest extends TestCase {
 
@@ -13,7 +14,8 @@ public class RoundTripTest extends TestCase {
 
         // Load OSM data from PBF
         OSM osmOriginal = new OSM(null);
-        osmOriginal.loadFromPBFFile("/var/otp/graphs/portland/portland_oregon.osm.pbf");
+        osmOriginal.loadFromPBFFile("./src/test/resources/bangor_maine.osm.pbf");
+        //osmOriginal.loadFromPBFFile("./tokyo_japan.osm.pbf");
         assertTrue(osmOriginal.nodes.size() > 1);
         assertTrue(osmOriginal.ways.size() > 1);
         assertTrue(osmOriginal.relations.size() > 1);
@@ -30,10 +32,19 @@ public class RoundTripTest extends TestCase {
         codec.readVex(new FileInputStream(vexFile), osmCopy);
 
         // Compare PBF data to VEX data using Map.equals() which checks whether two maps have the same entrySet.
-        assertEquals(osmOriginal.nodes, osmCopy.nodes);
-        assertEquals(osmOriginal.ways, osmCopy.ways);
-        assertEquals(osmOriginal.relations, osmCopy.relations);
+        compareMap(osmOriginal.nodes, osmCopy.nodes);
+        compareMap(osmOriginal.ways, osmCopy.ways);
+        compareMap(osmOriginal.relations, osmCopy.relations);
 
+    }
+
+    private <K,V> void compareMap (Map<K,V> m1, Map<K,V> m2) {
+        assertEquals(m1.size(), m2.size());
+        for (Map.Entry<K,V> entry : m1.entrySet()) {
+            V e1 = entry.getValue();
+            V e2 = m2.get(entry.getKey());
+            assertEquals(e1, e2);
+        }
     }
 
 }

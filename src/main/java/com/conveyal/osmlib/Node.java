@@ -35,5 +35,13 @@ public class Node extends OSMEntity implements Serializable {
     public String toString() {
         return "[Node "+getLat()+" "+getLon()+"]";
     }
-    
+
+    @Override
+    public boolean equals(Object other) {
+        if ( ! (other instanceof Node)) return false;
+        Node otherNode = (Node) other;
+        return this.fixedLat == otherNode.fixedLat &&
+               this.fixedLon == otherNode.fixedLon &&
+               this.tagsEqual(otherNode);
+    }
 }

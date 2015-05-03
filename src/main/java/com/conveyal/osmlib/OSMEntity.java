@@ -21,9 +21,19 @@ public abstract class OSMEntity implements Serializable {
             this.key = key;
             this.value = value != null ? value : "";
         }
+
+        @Override
         public String toString() {
             return key + "=" + value;
         }
+
+        @Override
+        public boolean equals (Object other) {
+            if (!(other instanceof Tag)) return false;
+            Tag otherTag = (Tag) other;
+            return this.key.equals(otherTag.key) && this.value.equals(otherTag.value);
+        }
+
     }
 
     /** Return the tag value for the given key. Returns null if the tag key is not present. */
@@ -76,6 +86,11 @@ public abstract class OSMEntity implements Serializable {
             tags = Lists.newArrayList();
         }
         tags.add(new Tag(key, value));
+    }
+
+    public boolean tagsEqual (OSMEntity other) {
+        if (this.hasNoTags() && other.hasNoTags()) return true;
+        return this.tags.equals(other.tags);
     }
 
     /** This feels strange because we're using Enums to duplicate Java type data (Node.class) */

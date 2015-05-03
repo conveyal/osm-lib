@@ -1,6 +1,7 @@
 package com.conveyal.osmlib;
 
 import java.io.Serializable;
+import java.util.Arrays;
 
 public class Way extends OSMEntity implements Serializable {
 
@@ -17,5 +18,12 @@ public class Way extends OSMEntity implements Serializable {
     public Type getType() {
         return Type.WAY;
     }
-    
+
+    @Override
+    public boolean equals(Object other) {
+        if ( ! (other instanceof Way)) return false;
+        Way otherWay = (Way) other;
+        return Arrays.equals(this.nodes, otherWay.nodes) && this.tagsEqual(otherWay);
+    }
+
 }

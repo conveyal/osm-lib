@@ -152,8 +152,8 @@ public class VexFormatCodec {
         // 180e7 = 1800000000.0
         long fixedLat = (long) (node.fixedLat);
         long fixedLon = (long) (node.fixedLon);
-        vout.writeSInt64NoTag(prevFixedLat - fixedLat);
-        vout.writeSInt64NoTag(prevFixedLon - fixedLon);
+        vout.writeSInt64NoTag(fixedLat - prevFixedLat);
+        vout.writeSInt64NoTag(fixedLon - prevFixedLon);
         prevFixedLat = fixedLat;
         prevFixedLon = fixedLon;
     }
@@ -162,7 +162,7 @@ public class VexFormatCodec {
         writeCommonFields(id, way);
         vout.writeUInt32NoTag(way.nodes.length);
         for (long ref : way.nodes) {
-            vout.writeSInt64NoTag(prevRef - ref);
+            vout.writeSInt64NoTag(ref - prevRef);
             prevRef = ref;
         }
     }
@@ -182,6 +182,7 @@ public class VexFormatCodec {
     public boolean readRelation() throws IOException {
         /* Create a new instance each time because we don't know if this is going in a MapDB or a normal Map. */
         Relation relation = new Relation();
+        vin.resetSizeCounter(); // Otherwise library blows up thinking it's loading one giant protobuf message
         long idDelta = vin.readSInt64();
         if (idDelta == 0) return true;
         id += idDelta;
@@ -216,7 +217,7 @@ public class VexFormatCodec {
 
     public boolean readBlock() throws IOException {
         // Reset delta coding fields
-        lat = lon = id = ref = 0;
+        lat = lon = id = ref = prevFixedLat = prevFixedLon = 0;
         int blockType = vin.readUInt32();
         if (blockType == VEX_NONE) return true; // NONE block indicates end of file
         boolean blockEnd = false;
@@ -258,13 +259,15 @@ public class VexFormatCodec {
     public boolean readNode() throws IOException {
         /* Create a new instance each time because we don't know if this is going in a MapDB or a normal Map. */
         Node node = new Node();
+        vin.resetSizeCounter(); // Otherwise library blows up thinking it's loading one giant protobuf message
         long idDelta = vin.readSInt64();
         if (idDelta == 0) return true;
         id += idDelta;
         node.tags = readTags();
-        lat += vin.readSInt64() * 1000000d;
-        lon += vin.readSInt64() * 1000000d;
-        node.setLatLon(lat, lon);
+        node.fixedLat = (int) (prevFixedLat + vin.readSInt64());
+        node.fixedLon = (int) (prevFixedLon + vin.readSInt64());
+        prevFixedLat = node.fixedLat;
+        prevFixedLon = node.fixedLon;
         osm.nodes.put(id, node);
         return false;
     }
@@ -272,6 +275,7 @@ public class VexFormatCodec {
     public boolean readWay() throws IOException {
         /* Create a new instance each time because we don't know if this is going in a MapDB or a normal Map. */
         Way way = new Way();
+        vin.resetSizeCounter(); // Otherwise library blows up thinking it's loading one giant protobuf message
         long idDelta = vin.readSInt64();
         if (idDelta == 0) return true;
         id += idDelta;
