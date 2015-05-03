@@ -63,10 +63,11 @@ public class Parser extends BinaryParser {
     // Not storing elements that lack interesting tags reduces size by 80%.
     // return true; DEBUG
     private boolean retainTag(String key) {
-        for (String s : retainKeys) {
-            if (s.equals(key)) return true;
-        }
-        return false;
+        return true;
+//        for (String s : retainKeys) {
+//            if (s.equals(key)) return true;
+//        }
+//        return false;
     }
 
     // Load ways first, then skip loading all nodes which are not tracked.

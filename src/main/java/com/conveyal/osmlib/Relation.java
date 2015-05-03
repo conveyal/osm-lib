@@ -18,14 +18,22 @@ public class Relation extends OSMEntity implements Serializable {
         public String role;
         @Override
         public String toString() {
-            return String.format("%s %s %d", role, type.toString(), id);
+            StringBuilder sb = new StringBuilder();
+            sb.append(type.toString());
+            sb.append(' ');
+            sb.append(id);
+            if (role != null && !role.isEmpty()) {
+                sb.append(" as ");
+                sb.append(role);
+            }
+            return sb.toString();
         }
     }
     
     @Override
     public String toString() {
         StringBuilder sb = new StringBuilder();
-        sb.append("Relation with tags ");
+        sb.append("relation with tags ");
         sb.append(tags);
         sb.append('\n');
         for (Member member : members) {

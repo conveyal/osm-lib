@@ -21,6 +21,9 @@ public abstract class OSMEntity implements Serializable {
             this.key = key;
             this.value = value != null ? value : "";
         }
+        public String toString() {
+            return key + "=" + value;
+        }
     }
 
     /** Return the tag value for the given key. Returns null if the tag key is not present. */

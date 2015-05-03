@@ -127,7 +127,7 @@ public class OSM {
      * It remains to be determined whether this VEX text format is better or worse than the slightly 
      * more complicated VEX binary format, but it's certainly simpler and cleaner than PBF.
      */
-    public void loadFromVexStream (InputStream vexStream) throws IOException {
+    public void loadFromVexTextStream (InputStream vexStream) throws IOException {
         InputStream unzippedStream = new GZIPInputStream(vexStream);
         Reader decoded = new InputStreamReader(unzippedStream, Charsets.UTF_8); // UTF8 ENCODING is important
         BufferedReader bufferedReader = new BufferedReader(decoded);
