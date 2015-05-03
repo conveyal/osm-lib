@@ -1,7 +1,5 @@
 package com.conveyal.osmlib;
 
-import com.google.protobuf.CodedInputStream;
-import com.google.protobuf.CodedOutputStream;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -31,10 +29,10 @@ public class VexFormatCodec {
     public static final int VEX_NONE = 3;
 
     /* The input stream providing decompressed VEX format. */
-    private CodedInputStream vin;
+    private VarIntInputStream vin;
 
     /* The output sink for uncompressed VEX format. */
-    private CodedOutputStream vout;
+    private VarIntOutputStream vout;
 
     /* Persistent values for delta coding. */
     private long id, ref, prevId, prevRef, prevFixedLat, prevFixedLon;
@@ -48,26 +46,26 @@ public class VexFormatCodec {
         LOG.info("Writing VEX format...");
         this.osm = osm;
         GZIPOutputStream gzOut = new GZIPOutputStream(outputStream);
-        vout = CodedOutputStream.newInstance(gzOut);
-        vout.writeRawBytes(HEADER.getBytes());
+        vout = new VarIntOutputStream(gzOut);
+        vout.writeBytes(HEADER.getBytes());
         long nEntities = 0;
         nEntities += writeNodeBlock();
         nEntities += writeWayBlock();
         nEntities += writeRelationBlock();
         // Empty block of type NONE indicates end of blocks
         beginWriteBlock(VEX_NONE);
-        // Total number of blocks including terminator as a "checksum" (should this be total number of entities instead?)
+        // Write the total number of blocks including terminator as a "checksum"
+        // (should this be total number of entities written instead?)
         endWriteBlock(4);
-        vout.flush();
         gzOut.close(); // also finishes writing compressed data before closing the underlying stream;
         LOG.info("Done writing VEX format.");
     }
 
     public void readVex(InputStream gzVexStream, OSM osm) throws IOException {
         LOG.info("Reading VEX format...");
-        this.vin = CodedInputStream.newInstance(new GZIPInputStream(gzVexStream));
+        this.vin = new VarIntInputStream(new GZIPInputStream(gzVexStream));
         this.osm = osm;
-        byte[] header = vin.readRawBytes(HEADER.length());
+        byte[] header = vin.readBytes(HEADER.length());
         if ( ! Arrays.equals(header, HEADER.getBytes())) {
             throw new IOException("Corrupt header.");
         }
@@ -92,13 +90,13 @@ public class VexFormatCodec {
     private void beginWriteBlock(int etype) throws IOException {
         prevId = prevRef = 0;
         prevFixedLat = prevFixedLon = 0;
-        vout.writeUInt32NoTag(etype);
+        vout.writeUInt32(etype);
     }
 
     /* @param n - the number of entities that were written in this block. */
     private void endWriteBlock(int n) throws IOException {
-        vout.writeSInt64NoTag(0L);
-        vout.writeUInt32NoTag(n);
+        vout.writeSInt64(0L);
+        vout.writeUInt32(n);
     }
 
     /**
@@ -140,7 +138,7 @@ public class VexFormatCodec {
 
     /** Write the first elements common to all OSM entities: ID and tags. */
     private void writeCommonFields(long id, OSMEntity osmEntity) throws IOException {
-        vout.writeSInt64NoTag(id - prevId);
+        vout.writeSInt64(id - prevId);
         prevId = id;
         writeTags(osmEntity);
     }
@@ -152,28 +150,28 @@ public class VexFormatCodec {
         // 180e7 = 1800000000.0
         long fixedLat = (long) (node.fixedLat);
         long fixedLon = (long) (node.fixedLon);
-        vout.writeSInt64NoTag(fixedLat - prevFixedLat);
-        vout.writeSInt64NoTag(fixedLon - prevFixedLon);
+        vout.writeSInt64(fixedLat - prevFixedLat);
+        vout.writeSInt64(fixedLon - prevFixedLon);
         prevFixedLat = fixedLat;
         prevFixedLon = fixedLon;
     }
 
     private void writeWay(long id, Way way) throws IOException {
         writeCommonFields(id, way);
-        vout.writeUInt32NoTag(way.nodes.length);
+        vout.writeUInt32(way.nodes.length);
         for (long ref : way.nodes) {
-            vout.writeSInt64NoTag(ref - prevRef);
+            vout.writeSInt64(ref - prevRef);
             prevRef = ref;
         }
     }
 
     private void writeRelation(long id, Relation relation) throws IOException {
         writeCommonFields(id, relation);
-        vout.writeUInt32NoTag(relation.members.size());
+        vout.writeUInt32(relation.members.size());
         for (Relation.Member member : relation.members) {
-            vout.writeSInt64NoTag(member.id);
-            vout.writeUInt32NoTag(member.type.ordinal()); // FIXME bad, assign specific numbers
-            vout.writeStringNoTag(member.role);
+            vout.writeSInt64(member.id);
+            vout.writeUInt32(member.type.ordinal()); // FIXME bad, assign specific numbers
+            vout.writeString(member.role);
         }
     }
 
@@ -182,7 +180,6 @@ public class VexFormatCodec {
     public boolean readRelation() throws IOException {
         /* Create a new instance each time because we don't know if this is going in a MapDB or a normal Map. */
         Relation relation = new Relation();
-        vin.resetSizeCounter(); // Otherwise library blows up thinking it's loading one giant protobuf message
         long idDelta = vin.readSInt64();
         if (idDelta == 0) return true;
         id += idDelta;
@@ -204,13 +201,13 @@ public class VexFormatCodec {
         List<OSMEntity.Tag> tags = tagged.tags;
         // TODO This could stand a little more abstraction, like List<Tag> getTags()
         if (tagged.tags == null) {
-            vout.writeUInt32NoTag(0);
+            vout.writeUInt32(0);
         } else {
-            vout.writeUInt32NoTag(tags.size());
+            vout.writeUInt32(tags.size());
             for (OSMEntity.Tag tag : tagged.tags) {
                 if (tag.value == null) tag.value = "";
-                vout.writeStringNoTag(tag.key);
-                vout.writeStringNoTag(tag.value);
+                vout.writeString(tag.key);
+                vout.writeString(tag.value);
             }
         }
     }
@@ -259,7 +256,6 @@ public class VexFormatCodec {
     public boolean readNode() throws IOException {
         /* Create a new instance each time because we don't know if this is going in a MapDB or a normal Map. */
         Node node = new Node();
-        vin.resetSizeCounter(); // Otherwise library blows up thinking it's loading one giant protobuf message
         long idDelta = vin.readSInt64();
         if (idDelta == 0) return true;
         id += idDelta;
@@ -275,7 +271,6 @@ public class VexFormatCodec {
     public boolean readWay() throws IOException {
         /* Create a new instance each time because we don't know if this is going in a MapDB or a normal Map. */
         Way way = new Way();
-        vin.resetSizeCounter(); // Otherwise library blows up thinking it's loading one giant protobuf message
         long idDelta = vin.readSInt64();
         if (idDelta == 0) return true;
         id += idDelta;
@@ -301,15 +296,10 @@ public class VexFormatCodec {
 
         // This could be done in the constructor.
         private void streamBegin() throws IOException {
-            vout = CodedOutputStream.newInstance(new GZIPOutputStream(new FileOutputStream("/home/abyrd/test.vex")));
-            vout.writeRawBytes(HEADER.getBytes());
+            vout = new VarIntOutputStream(new GZIPOutputStream(new FileOutputStream("/home/abyrd/test.vex")));
+            vout.writeBytes(HEADER.getBytes());
             curr_etype = VEX_NONE;
             ecount = 0;
-        }
-
-        private void streamEnd() throws IOException {
-            checkBlockTransition(VEX_NONE);
-            vout.flush();
         }
 
         private void checkBlockTransition(int toEtype) throws IOException {
@@ -371,7 +361,6 @@ public class VexFormatCodec {
         try {
             converter.streamBegin();
             converter.parse(INPUT);
-            converter.streamEnd();
         } catch (IOException ex) {
             throw new RuntimeException(ex);
         }
