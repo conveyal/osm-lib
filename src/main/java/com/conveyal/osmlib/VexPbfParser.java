@@ -1,11 +1,13 @@
 package com.conveyal.osmlib;
 
-import org.mapdb.Fun.Tuple3;
+import java.io.InputStream;
 
 /**
  * A parser that keeps track of intersections in the file being loaded.
+ *
+ * FIXME just move this functionality into OSM class
  */
-public class VexPbfParser extends Parser {
+public class VexPbfParser extends PBFInput {
 
     /** The nodes that are referenced at least once by ways in this OSM. */
     NodeTracker referenced = new NodeTracker();
@@ -13,11 +15,10 @@ public class VexPbfParser extends Parser {
     /** The nodes which are referenced more than once by ways in this OSM. */
     NodeTracker intersections = new NodeTracker();
 
-    public VexPbfParser (OSM osm) {
-        super(osm);
+    public VexPbfParser (InputStream inputStream, OSM osm) {
+        super(inputStream, osm);
     }
 
-    @Override
     public void handleWay(long wayId, Way way) {
 
         /* Skip ways with no nodes. */
@@ -34,24 +35,24 @@ public class VexPbfParser extends Parser {
 
         /* Insert the way in the spatial index. */
         long firstNodeId = way.nodes[0];
-        Node firstNode = osm.nodes.get(firstNodeId);
+        Node firstNode = null; // FIXME osm.nodes.get(firstNodeId);
         if (firstNode == null) {
             LOG.error("A way referenced a node that was not yet included in the input.");
         } else {
             WebMercatorTile tile = new WebMercatorTile(firstNode.getLat(), firstNode.getLon());
             // We could also insert using ((float)lat, (float)lon) as a key
             // but depending on whether MapDB does tree path compression this might take more space
-            osm.index.add(new Tuple3(tile.xtile, tile.ytile, wayId));
+            // FIXME osm.index.add(new Tuple3(tile.xtile, tile.ytile, wayId));
         }
 
         /* Defer to the superclass to store the node in the map. */
-        super.handleWay(wayId, way);
+        // FIXME super.handleWay(wayId, way);
     };
 
     public static class WebMercatorTile {
 
         //http://www.maptiler.org/google-maps-coordinates-tile-bounds-projection/
-        public final int ZOOM = 14;
+        public final int ZOOM = 12;
         public final int xtile, ytile;
 
         /** Tile definition equations from: TODO URL */

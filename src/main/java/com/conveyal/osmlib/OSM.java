@@ -2,8 +2,6 @@ package com.conveyal.osmlib;
 
 import com.conveyal.osmlib.serializer.NodeSerializer;
 import com.conveyal.osmlib.serializer.WaySerializer;
-import com.google.common.base.Charsets;
-import com.google.common.primitives.Longs;
 import org.mapdb.BTreeKeySerializer;
 import org.mapdb.DB;
 import org.mapdb.DBMaker;
@@ -11,26 +9,19 @@ import org.mapdb.Fun.Tuple3;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.BufferedReader;
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileNotFoundException;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.InputStreamReader;
-import java.io.Reader;
-import java.util.ArrayList;
+import java.io.*;
 import java.util.Map;
 import java.util.NavigableSet;
-import java.util.zip.GZIPInputStream;
 
 /**
  * OTP representation of a subset of OpenStreetMap. One or more PBF files can be loaded into this
  * object, which serves as a simplistic database for fetching and iterating over OSM elements.
  * Using DB TreeMaps is often not any slower than memory. HashMaps are both bigger and slower.
  * This is probably because our keys are so small. A hashmap needs to store both the long key and its hash.
+ *
+ * FIXME rename this to OSMStorage or OSMDatabase
  */
-public class OSM {
+public class OSM implements OSMEntitySink {
 
     private static final Logger LOG = LoggerFactory.getLogger(OSM.class);
 
@@ -104,67 +95,73 @@ public class OSM {
         
     }
     
-    // boolean to filter entities on tags, or list of tag keys to retain?
-    public void loadFromPBFStream (InputStream in) {
-        LOG.info("Reading PBF stream.");
-        Parser parser = new Parser(this);
-        parser.parse(in);
-    }
-
     public void loadFromPBFFile (String filePath) {
         try {
             LOG.info("Reading PBF from file '{}'.", filePath);
-            Parser parser = new Parser(this);
-            parser.parse(new FileInputStream(filePath));
-        } catch (FileNotFoundException e) {
+            PBFInput pbfSource = new PBFInput(new FileInputStream(filePath), this);
+            pbfSource.read();
+        } catch (Exception ex) {
             LOG.error("Error occurred while parsing PBF file '{}'", filePath);
-            e.printStackTrace();
+            ex.printStackTrace();
         }
     }
 
-    /**
-     * Decode OSM gzipped text format produced by Vanilla Extract.
-     * It remains to be determined whether this VEX text format is better or worse than the slightly 
-     * more complicated VEX binary format, but it's certainly simpler and cleaner than PBF.
-     */
-    public void loadFromVexTextStream (InputStream vexStream) throws IOException {
-        InputStream unzippedStream = new GZIPInputStream(vexStream);
-        Reader decoded = new InputStreamReader(unzippedStream, Charsets.UTF_8); // UTF8 ENCODING is important
-        BufferedReader bufferedReader = new BufferedReader(decoded);
-        ArrayList<Long> nodesInWay = new ArrayList<>();
-        Way way = null;
-        Relation relation = null;
-        long currentWayId = -1;
-        String line;
-        while ((line = bufferedReader.readLine()) != null) {
-            String[] fields = line.trim().split("[ \t]");
-            String etype = fields[0];
-            long id = Long.parseLong(fields[1]);
-            // LOG.info("{} {}", etype, id);
-            if (etype.startsWith("W")) {
-                if (way != null) {
-                    way.nodes = Longs.toArray(nodesInWay);
-                    ways.put(currentWayId, way);
-                }
-                way = new Way();
-                nodesInWay.clear();
-                currentWayId = id;
-                if (fields.length > 2) {
-                    way.setTagsFromString(fields[2]);
-                }
-            } else if ("N".equals(fields[0])) {
-                double lat = Double.parseDouble(fields[2]);
-                double lon = Double.parseDouble(fields[3]);
-                Node node = new Node(lat, lon);
-                if (fields.length > 4) {
-                    node.setTagsFromString(fields[4]);
-                }
-                nodes.put(id, node);
-                nodesInWay.add(id);
-            } else {
-                LOG.error("Unrecognized entity type {}", fields[0]);
-            }
+    // TODO readPbf, writePbf
+    public void readVex(InputStream inputStream) {
+        try {
+            OSMEntitySource  source = new VexInput(inputStream, this);
+            source.read();
+        } catch (IOException ex) {
+            LOG.error("Error occurred while parsing VEX stream.");
+            ex.printStackTrace();
         }
-        bufferedReader.close();
     }
+
+    /** Write the contents of this OSM MapDB out to a stream in VEX binary format. */
+    public void writeVex(OutputStream outputStream) throws IOException {
+        OSMEntitySink sink = new VexOutput(outputStream);
+        this.writeToSink(sink);
+    }
+
+    public void writeToSink(OSMEntitySink sink) throws IOException {
+        sink.writeBegin();
+        for (Map.Entry<Long, Node> nodeEntry : this.nodes.entrySet()) {
+            sink.writeNode(nodeEntry.getKey(), nodeEntry.getValue());
+        }
+        for (Map.Entry<Long, Way> wayEntry : this.ways.entrySet()) {
+            sink.writeWay(wayEntry.getKey(), wayEntry.getValue());
+        }
+        for (Map.Entry<Long, Relation> relationEntry : this.relations.entrySet()) {
+            sink.writeRelation(relationEntry.getKey(), relationEntry.getValue());
+        }
+        sink.writeEnd();
+    }
+
+    /* OSM DATA SINK INTERFACE */
+
+    @Override
+    public void writeBegin() throws IOException {
+        // Do nothing. Could initialize database here.
+    }
+
+    @Override
+    public void writeNode(long id, Node node) {
+        this.nodes.put(id, node);
+    }
+
+    @Override
+    public void writeWay(long id, Way way) {
+        this.ways.put(id, way);
+    }
+
+    @Override
+    public void writeRelation(long id, Relation relation) {
+        this.relations.put(id, relation);
+    }
+
+    @Override
+    public void writeEnd() throws IOException {
+        // Do nothing.
+    }
+
 }

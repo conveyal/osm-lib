@@ -26,7 +26,7 @@ import java.io.OutputStream;
  * Loading the PBF into MapDB takes 6 minutes for nodes, 1 minute for ways, and 35 seconds to find intersections.
  * However, this is loading
  * During tests, the JVM ran out of memory when making edges because currently we keeps all edges in memory.
- * Note that these maps contain only routable ways, not all ways (see org.opentripplanner.osm.Parser#retainKeys).
+ * Note that these maps contain only routable ways, not all ways (see org.opentripplanner.osm.PBFInput#retainKeys).
  *
  * A "compressed" DB is about 1/3 smaller than an uncompressed one.
  * The "compact" operation only reduces an uncompressed DB's size by about 1/6.
@@ -58,11 +58,7 @@ public class OSMMain {
         osm.loadFromPBFFile(inputLocation);
         try (OutputStream fout = new FileOutputStream(outputLocation)) {
             LOG.info("writing vex to '{}'...", outputLocation);
-            new VexFormatCodec().writeVex(osm, fout);
-// TODO put this in a similar function to writeVex
-//            OutputStream gzout = new GZIPOutputStream(fout);
-//            new OSMTextOutput(gzout, osm).printAllWays();
-//            gzout.close();
+            osm.writeVex(fout);
             LOG.info("done writing vex.");
         } catch (FileNotFoundException ex) {
             LOG.error("File not found exception");

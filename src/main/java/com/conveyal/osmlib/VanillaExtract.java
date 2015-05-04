@@ -33,18 +33,18 @@ public class VanillaExtract {
 
     private static final String BIND_ADDRESS = "0.0.0.0";
 
+    /** VanillaExtract /path/to/storageFile inputFile.pbf */
     public static void main(String[] args) {
 
         OSM osm = new OSM(args[0]);
-        VexPbfParser parser = new VexPbfParser(osm);
-        parser.parse(args[1]);
+        osm.loadFromPBFFile(args[1]);
 
         LOG.info("Starting VEX HTTP server on port {} of interface {}", PORT, BIND_ADDRESS);
         HttpServer httpServer = new HttpServer();
         httpServer.addListener(new NetworkListener("vanilla_extract", BIND_ADDRESS, PORT));
         // Bypass Jersey etc. and add a low-level Grizzly handler.
         // As in servlets, * is needed in base path to identify the "rest" of the path.
-        httpServer.getServerConfiguration().addHttpHandler(new VexHttpHandler(parser), "/*");
+        httpServer.getServerConfiguration().addHttpHandler(new VexHttpHandler(osm), "/*");
         try {
             httpServer.start();
             LOG.info("VEX server running.");
@@ -62,10 +62,10 @@ public class VanillaExtract {
 
     private static class VexHttpHandler extends HttpHandler {
 
-        private static VexPbfParser parser;
+        private static OSM osm;
 
-        public VexHttpHandler(VexPbfParser parser) {
-            this.parser = parser;
+        public VexHttpHandler(OSM osm) {
+            this.osm = osm;
         }
 
         @Override
@@ -98,24 +98,22 @@ public class VanillaExtract {
                 int maxX = maxTile.xtile;
                 int maxY = minTile.ytile;
 
-                OutputStream zipOut = new GZIPOutputStream(out);
-                OSMTextOutput tout = new OSMTextOutput(zipOut, parser.osm);
+                OSMEntitySink vexOutput = new VexOutput(out);
 
                 // SortedSet provides one-dimensional ordering and iteration. Tuple3 gives an odometer-like ordering.
                 // Therefore we must vary one of the dimensions "manually". Consider a set containing all the integers
                 // from 00 to 99 at 2-tuples. The range from (1,1) to (2,2) does not contain the four
                 // elements (1,1) (1,2) (2,1) (2,2). It contains the elements (1,1) (1,2) (1,3) (1,4) ... (2,2).
                 for (int x = minX; x <= maxX; x++) {
-                    SortedSet<Tuple3<Integer, Integer, Long>> xSubset = parser.osm.index.subSet(
+                    SortedSet<Tuple3<Integer, Integer, Long>> xSubset = osm.index.subSet(
                         new Tuple3(x, minY, null  ), true, // inclusive lower bound, null tests lower than anything
                         new Tuple3(x, maxY, Fun.HI), true  // inclusive upper bound, HI tests higher than anything
                     );
                     for (Tuple3<Integer, Integer, Long> item : xSubset) {
                         long wayId = item.c;
-                        tout.printWay(wayId);
+                        vexOutput.writeWay(wayId, null); // FIXME
                     }
                 }
-                zipOut.close(); // necessary to avoid corrupted gzip file
                 response.setStatus(HttpStatus.OK_200);
             } catch (Exception ex) {
                 response.setStatus(HttpStatus.BAD_REQUEST_400);
