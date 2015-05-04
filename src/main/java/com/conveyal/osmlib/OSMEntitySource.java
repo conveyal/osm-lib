@@ -9,7 +9,7 @@ import java.io.InputStream;
  */
 public interface OSMEntitySource {
 
-    /** Read the OSM entities from this source and pump them through to the sink. */
+    /** Read the OSM entities from this source and pump them through to the sink. TODO read(sink) so OSM can implement this interface */
     public abstract void read() throws IOException;
 
 }

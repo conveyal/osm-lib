@@ -6,6 +6,7 @@ import org.slf4j.LoggerFactory;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.util.List;
+import java.util.zip.Deflater;
 import java.util.zip.GZIPOutputStream;
 
 /**
@@ -16,7 +17,7 @@ public class VexOutput implements OSMEntitySink {
 
     private static final Logger LOG = LoggerFactory.getLogger(VexOutput.class);
 
-    private static final int MAX_BLOCK_ENTITIES = 64 * 1024;
+    private static final int MAX_BLOCK_ENTITIES = 1024 * 1024;
 
     /* The underlying output stream where VEX data will be written. */
     private OutputStream outputStream;
@@ -68,9 +69,13 @@ public class VexOutput implements OSMEntitySink {
         if (blockEntityType != eType || blockEntityCount > MAX_BLOCK_ENTITIES) {
             if (blockEntityType != VexFormat.VEX_NONE) {
                 writeBlockEnd(blockEntityCount);
-                blockEntityCount = 0;
                 blockCount += 1;
-                LOG.info("Wrote block {}", blockCount);
+                String type = "entities";
+                if (blockEntityType == VexFormat.VEX_NODE) type = "nodes";
+                if (blockEntityType == VexFormat.VEX_WAY) type = "ways";
+                if (blockEntityType == VexFormat.VEX_RELATION) type = "relations";
+                LOG.info("Wrote block {} with {} {}", blockCount, blockEntityCount, type);
+                blockEntityCount = 0;
             }
             writeBlockBegin(eType);
             blockEntityType = eType;
@@ -98,6 +103,11 @@ public class VexOutput implements OSMEntitySink {
     public void writeBegin() throws IOException {
         LOG.info("Writing VEX format...");
         this.gzipOutputStream = new GZIPOutputStream(outputStream);
+//        this.gzipOutputStream = new GZIPOutputStream(outputStream) {
+//            {
+//                this.def.setLevel(Deflater.BEST_SPEED);
+//            }
+//        };
         this.vout = new VarIntOutputStream(gzipOutputStream);
         vout.writeBytes(VexFormat.HEADER);
     }

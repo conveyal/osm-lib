@@ -21,7 +21,7 @@ import java.util.NavigableSet;
  *
  * FIXME rename this to OSMStorage or OSMDatabase
  */
-public class OSM implements OSMEntitySink {
+public class OSM implements OSMEntitySink { // TODO implements OSMEntitySource
 
     private static final Logger LOG = LoggerFactory.getLogger(OSM.class);
 
@@ -123,6 +123,7 @@ public class OSM implements OSMEntitySink {
         this.writeToSink(sink);
     }
 
+    /** Write the contents of this OSM MapDB out to an OSM entity sink. */
     public void writeToSink(OSMEntitySink sink) throws IOException {
         sink.writeBegin();
         for (Map.Entry<Long, Node> nodeEntry : this.nodes.entrySet()) {
