@@ -40,6 +40,7 @@ public class VexInput implements OSMEntitySource {
         if ( ! Arrays.equals(header, VexFormat.HEADER)) {
             throw new IOException("Corrupt header.");
         }
+        entitySink.writeBegin();
         boolean done = false;
         long nBlocks = 0;
         while ( ! done) {
@@ -56,6 +57,7 @@ public class VexInput implements OSMEntitySource {
             LOG.error("Did not read the expected number of blocks.");
         }
         LOG.info("Done reading.");
+        entitySink.writeEnd();
     }
 
 

@@ -16,7 +16,7 @@ public interface OSMEntitySink {
 
     public void writeBegin() throws IOException;
 
-    public void writeNode(long id, Node node) throws IOException;
+    public void writeNode(long id, Node node) throws IOException; // TODO rename id parameters to nodeId, wayId, relationId throughout
 
     public void writeWay(long id, Way way) throws IOException;
 

@@ -57,7 +57,11 @@ public class VexOutput implements OSMEntitySink {
 
     /** Write the fields common to all OSM entities: ID and tags. Also increments the entity counter. */
     private void writeCommonFields(long id, OSMEntity osmEntity) throws IOException {
-        vout.writeSInt64(id - prevId);
+        long idDelta = id - prevId;
+        if (idDelta == 0) {
+            LOG.error("The same entity ID is being written twice in a row. This will prematurely terminate a block.");
+        }
+        vout.writeSInt64(idDelta);
         prevId = id;
         writeTags(osmEntity);
         blockEntityCount += 1;

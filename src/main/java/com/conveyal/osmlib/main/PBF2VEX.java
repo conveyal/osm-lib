@@ -1,5 +1,6 @@
-package com.conveyal.osmlib;
+package com.conveyal.osmlib.main;
 
+import com.conveyal.osmlib.*;
 import com.google.common.collect.HashMultimap;
 import com.google.common.collect.Multimap;
 import org.slf4j.Logger;
@@ -7,12 +8,12 @@ import org.slf4j.LoggerFactory;
 
 import java.io.*;
 
-// Compression is much slower than decompression.
+// Compression is much slower than decompression. Disk access is also a major factor in slowness for large extracts.
 public class PBF2VEX {
 
     private static final Logger LOG = LoggerFactory.getLogger(PBF2VEX.class);
 
-    /** This main method will convert a PBF file to VEX using an intermediate MapDB datastore. */
+    /** This main method will convert a PBF file to VEX without using an intermediate MapDB datastore. */
     public static void main(String[] args) {
 
         // Get input and output file names

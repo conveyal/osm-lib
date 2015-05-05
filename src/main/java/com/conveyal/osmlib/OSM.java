@@ -21,19 +21,33 @@ import java.util.NavigableSet;
  *
  * FIXME rename this to OSMStorage or OSMDatabase
  */
-public class OSM implements OSMEntitySink { // TODO implements OSMEntitySource
+public class OSM implements OSMEntitySink { // TODO implements OSMEntitySource, or make separate source/sink wrappers
 
     private static final Logger LOG = LoggerFactory.getLogger(OSM.class);
 
     public Map<Long, Node> nodes;
     public Map<Long, Way> ways;
     public Map<Long, Relation> relations;
+
+    /** A tile-based spatial index. */
     public NavigableSet<Tuple3<Integer, Integer, Long>> index; // (x_tile, y_tile, wayId)
+
+    /** The nodes that are referenced at least once by ways in this OSM. */
+    NodeTracker referencedNodes = new NodeTracker();
+
+    /** The nodes which are referenced more than once by ways in this OSM. */
+    NodeTracker intersectionNodes = new NodeTracker();
 
     /** The MapDB backing this OSM, if any. */
     DB db = null;
 
-    /** 
+    /* If true, insert all incoming ways in the index table. */
+    public boolean tileIndexing = false;
+
+    /* If true, track which nodes are referenced by more than one way. */
+    public boolean intersectionDetection = false;
+
+    /**
      * Construct a new MapDB-based random-access OSM data store.
      * If diskPath is null, OSM will be loaded into a temporary file and deleted on shutdown.
      * If diskPath is the string "__MEMORY__" the OSM will be stored entirely in memory. 
@@ -152,7 +166,35 @@ public class OSM implements OSMEntitySink { // TODO implements OSMEntitySource
 
     @Override
     public void writeWay(long id, Way way) {
+
+        // Insert the way into the MapDB table.
         this.ways.put(id, way);
+
+        // Optionally track which nodes are referenced by more than one way.
+        if (intersectionDetection) {
+            for (long nodeId : way.nodes) {
+                if (referencedNodes.contains(nodeId)) {
+                    intersectionNodes.add(nodeId);
+                } else {
+                    referencedNodes.add(nodeId);
+                }
+            }
+        }
+
+        // Insert the way into the tile-based spatial index according to its first node.
+        if (tileIndexing) {
+            long firstNodeId = way.nodes[0];
+            Node firstNode = this.nodes.get(firstNodeId);
+            if (firstNode == null) {
+                LOG.warn("Leaving way {} out of the index. It references node {} that was not (yet) provided.", id, firstNodeId);
+            } else {
+                WebMercatorTile tile = new WebMercatorTile(firstNode.getLat(), firstNode.getLon());
+                // We could also insert using ((float)lat, (float)lon) as a key
+                // but depending on whether MapDB does tree path compression this might take more space
+                this.index.add(new Tuple3(tile.xtile, tile.ytile, id));
+            }
+        }
+
     }
 
     @Override

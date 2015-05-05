@@ -37,6 +37,8 @@ public class VanillaExtract {
     public static void main(String[] args) {
 
         OSM osm = new OSM(args[0]);
+        osm.intersectionDetection = true;
+        osm.tileIndexing = true;
         osm.loadFromPBFFile(args[1]);
 
         LOG.info("Starting VEX HTTP server on port {} of interface {}", PORT, BIND_ADDRESS);
@@ -70,9 +72,10 @@ public class VanillaExtract {
 
         @Override
         public void service(Request request, Response response) throws Exception {
-            OutputStream out = response.getOutputStream();
+
             String uri = request.getDecodedRequestURI();
             response.setContentType("application/gzip");
+            OutputStream outStream = response.getOutputStream();
             try {
                 String[] coords = uri.split("/")[1].split("[,;]");
                 double minLat = Double.parseDouble(coords[0]);
@@ -89,38 +92,19 @@ public class VanillaExtract {
                 }
                 /* TODO filter out buildings on the server side. */
                 boolean buildings = coords.length > 4 && "buildings".equalsIgnoreCase(coords[4]);
-                VexPbfParser.WebMercatorTile minTile = new VexPbfParser.WebMercatorTile(minLat, minLon);
-                VexPbfParser.WebMercatorTile maxTile = new VexPbfParser.WebMercatorTile(maxLat, maxLon);
 
-                // Note that y tile numbers are increasing in the opposite direction of latitude (from north to south)
-                int minX = minTile.xtile;
-                int minY = maxTile.ytile;
-                int maxX = maxTile.xtile;
-                int maxY = minTile.ytile;
-
-                OSMEntitySink vexOutput = new VexOutput(out);
-
-                // SortedSet provides one-dimensional ordering and iteration. Tuple3 gives an odometer-like ordering.
-                // Therefore we must vary one of the dimensions "manually". Consider a set containing all the integers
-                // from 00 to 99 at 2-tuples. The range from (1,1) to (2,2) does not contain the four
-                // elements (1,1) (1,2) (2,1) (2,2). It contains the elements (1,1) (1,2) (1,3) (1,4) ... (2,2).
-                for (int x = minX; x <= maxX; x++) {
-                    SortedSet<Tuple3<Integer, Integer, Long>> xSubset = osm.index.subSet(
-                        new Tuple3(x, minY, null  ), true, // inclusive lower bound, null tests lower than anything
-                        new Tuple3(x, maxY, Fun.HI), true  // inclusive upper bound, HI tests higher than anything
-                    );
-                    for (Tuple3<Integer, Integer, Long> item : xSubset) {
-                        long wayId = item.c;
-                        vexOutput.writeWay(wayId, null); // FIXME
-                    }
-                }
+                OSMEntitySink vexOutput = new VexOutput(outStream);
+                TileOSMSource tileSource = new TileOSMSource(osm);
+                tileSource.setBoundingBox(minLat, minLon, maxLat, maxLon);
+                tileSource.sink = vexOutput;
+                tileSource.read();
                 response.setStatus(HttpStatus.OK_200);
             } catch (Exception ex) {
                 response.setStatus(HttpStatus.BAD_REQUEST_400);
-                out.write("URI format: /min_lat,min_lon,max_lat,max_lon (all in decimal degrees)\n".getBytes());
+                outStream.write("URI format: /min_lat,min_lon,max_lat,max_lon (all in decimal degrees)\n".getBytes());
                 ex.printStackTrace();
             } finally {
-                out.close();
+                outStream.close();
             }
         }
 
