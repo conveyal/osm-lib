@@ -2,12 +2,44 @@ package com.conveyal.osmlib.display;
 
 import java.awt.geom.Rectangle2D;import java.lang.Math;
 
+/**
+ * This class contains static methods for common map tile calculations.
+ * It also can be instantiated to serve as a key in tables, representing an (zoom,x,y) triple.
+ */
 public class WebMercatorTile {
 
     // http://www.maptiler.org/google-maps-coordinates-tile-bounds-projection/
     // http://wiki.openstreetmap.org/wiki/Slippy_map_tilenames#Java
 
-    public final int ZOOM = 14;
+    int x, y, zoom;
+
+    public WebMercatorTile(int zoom, int x, int y) {
+        this.zoom = zoom;
+        this.x = x;
+        this.y = y;
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+
+        WebMercatorTile that = (WebMercatorTile) o;
+
+        if (x != that.x) return false;
+        if (y != that.y) return false;
+        if (zoom != that.zoom) return false;
+
+        return true;
+    }
+
+    @Override
+    public int hashCode() {
+        int result = x;
+        result = 31 * result + y;
+        result = 31 * result + zoom;
+        return result;
+    }
 
     public static int xTile(double lon, int zoom) {
         return (int) Math.floor((lon + 180) / 360 * (1 << zoom));
