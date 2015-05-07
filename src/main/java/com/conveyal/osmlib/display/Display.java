@@ -100,8 +100,10 @@ class Surface extends JPanel implements ActionListener, MouseListener, MouseWhee
                     BufferedImage tileImage = tileCache.get(tile);
                     // TODO make a get rect convenience method on the tile
                     Rectangle2D box = WebMercatorTile.getRectangle(x, y, zoom);
+                    // The last transform function called is the first to be applied to the image coordinate space.
                     // Use _max_ Y rather than min because we're going to flip the y coordinates
                     AffineTransform transform = AffineTransform.getTranslateInstance(box.getMinX(), box.getMaxY());
+                    // Scale the image to the interval [0, widthDegrees) horizontally and [0, -heightDegrees) vertically.
                     transform.scale(box.getWidth() / 256, box.getHeight() / -256);
                     g2d.drawImage(tileImage, transform, null);
                 } catch (ExecutionException e) {

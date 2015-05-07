@@ -106,7 +106,9 @@ public class OSM implements OSMEntitySink { // TODO implements OSMEntitySource, 
         index = db.createTreeSet("spatial_index")
                 .serializer(BTreeKeySerializer.TUPLE3) 
                 .makeOrGet();
-        
+
+        db.createAtomicLong("timestamp", 0);
+
     }
     
     public void loadFromPBFFile (String filePath) {
