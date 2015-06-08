@@ -7,16 +7,14 @@ import org.glassfish.grizzly.http.server.NetworkListener;
 import org.glassfish.grizzly.http.server.Request;
 import org.glassfish.grizzly.http.server.Response;
 import org.glassfish.grizzly.http.util.HttpStatus;
-import org.mapdb.Fun;
-import org.mapdb.Fun.Tuple3;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.io.OutputStream;
 import java.net.BindException;
-import java.util.SortedSet;
-import java.util.zip.GZIPOutputStream;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 /**
  * Load OSM data into MapDB and perform bounding box extracts.
@@ -41,6 +39,8 @@ public class VanillaExtract {
         osm.tileIndexing = true;
         osm.loadFromPBFFile(args[1]);
 
+        Thread updateThread = Updater.spawnUpdateThread(osm);
+
         LOG.info("Starting VEX HTTP server on port {} of interface {}", PORT, BIND_ADDRESS);
         HttpServer httpServer = new HttpServer();
         httpServer.addListener(new NetworkListener("vanilla_extract", BIND_ADDRESS, PORT));
@@ -59,7 +59,22 @@ public class VanillaExtract {
             LOG.info("Interrupted, shutting down.");
         }
         httpServer.shutdown();
+    }
 
+    // Planet files are named planet-150504.osm.pbf (YYMMDD format)
+    // TODO auto-choose a DL mirror using ping?
+    public long timestampForPlanetFile(String filename) {
+        Pattern longDatePattern = Pattern.compile("\\d{8}"); // look for eight digits
+        Pattern shortDatePattern = Pattern.compile("\\d{6}"); // look for six digits
+        Matcher dateMatcher = longDatePattern.matcher(filename);
+        if (dateMatcher.matches()) {
+            // TODO
+        } else {
+            dateMatcher = longDatePattern.matcher(filename);
+            if (dateMatcher.matches()) {
+                // TODO
+            }
+        }
     }
 
     private static class VexHttpHandler extends HttpHandler {

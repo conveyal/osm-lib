@@ -154,6 +154,52 @@ public class OSM implements OSMEntitySink { // TODO implements OSMEntitySource, 
         sink.writeEnd();
     }
 
+
+    /**
+     * Insert the given way into the tile-based spatial index, based on its current node locations in the database.
+     * If the way does not exist, this method does nothing (leaving any reference to the way in the index) because
+     * it can't know anything about the location of a way that's already deleted. If the way object is not supplied
+     * it will be looked up by its ID.
+     */
+    public void indexWay(long wayId, Way way) {
+        // We could also insert using ((float)lat, (float)lon) as a key
+        // but depending on whether MapDB does tree path compression this might take more space
+        WebMercatorTile tile = tileForWay(wayId, way);
+        if (way == null) {
+            LOG.debug("Attempted insert way {} into the spatial index, but it is not currently in the database.", wayId);
+        } else {
+            this.index.add(new Tuple3(tile.xtile, tile.ytile, wayId));
+        }
+    }
+
+    public void unIndexWay(long wayId) {
+        Way way = ways.get(wayId);
+        if (way == null) {
+            LOG.debug("Attempted to remove way {} from the spatial index, but it is not currently in the database.", wayId);
+        } else {
+            WebMercatorTile tile = tileForWay(wayId, way);
+            if (tile != null) {
+                this.index.remove(new Tuple3(tile.xtile, tile.ytile, wayId));
+            }
+        }
+    }
+
+    /** @return null if the way is not in the database and therefore can't be located. */
+    private WebMercatorTile tileForWay (long wayId, Way way) {
+        if (way == null) way = ways.get(wayId); // Way object was not supplied, fetch it from the database.
+        if (way == null) return null; // Way does not exist anymore in the database, ignore it.
+        long firstNodeId = way.nodes[0];
+        Node firstNode = this.nodes.get(firstNodeId);
+        if (firstNode == null) {
+            LOG.debug("Leaving way {} out of the index. It references node {} that was not (yet) provided.",
+                      wayId, firstNodeId);
+            return null;
+        } else {
+            WebMercatorTile tile = new WebMercatorTile(firstNode.getLat(), firstNode.getLon());
+            return tile;
+        }
+    }
+
     /* OSM DATA SINK INTERFACE */
 
     @Override
@@ -185,16 +231,7 @@ public class OSM implements OSMEntitySink { // TODO implements OSMEntitySource, 
 
         // Insert the way into the tile-based spatial index according to its first node.
         if (tileIndexing) {
-            long firstNodeId = way.nodes[0];
-            Node firstNode = this.nodes.get(firstNodeId);
-            if (firstNode == null) {
-                LOG.warn("Leaving way {} out of the index. It references node {} that was not (yet) provided.", id, firstNodeId);
-            } else {
-                WebMercatorTile tile = new WebMercatorTile(firstNode.getLat(), firstNode.getLon());
-                // We could also insert using ((float)lat, (float)lon) as a key
-                // but depending on whether MapDB does tree path compression this might take more space
-                this.index.add(new Tuple3(tile.xtile, tile.ytile, id));
-            }
+            indexWay(id, way);
         }
 
     }

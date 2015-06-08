@@ -147,7 +147,7 @@ class Surface extends JPanel implements ActionListener, MouseListener, MouseWhee
         g2d.setStroke(new BasicStroke(0.0001f));
         //g2d.setStroke(new BasicStroke(2));
         drawMapTiles(g2d);
-        // drawOsm(g2d); // SLOW
+        drawOsm(g2d); // SLOW
         g2d.setTransform(savedTransform);
     }
 

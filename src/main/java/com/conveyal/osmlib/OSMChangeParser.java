@@ -9,20 +9,24 @@ import org.xml.sax.SAXException;
 import org.xml.sax.helpers.DefaultHandler;
 
 /**
- * TODO rename to UpdateParser or DiffParser
+ * A lenient streaming XML parser that reads OSM change files and applies the changes they contain to an OSM database.
+ * It seems like a good idea to abstract out a ChangeSink interface that extends the basic OSM entity sink.
+ * However, we need non-streaming behavior here: we want to index all the new ways after applying an entire diff
+ * because we have no guarantee that the nodes and ways are coherent at some point partway through the changes.
  */
-public class ChangesetParser extends DefaultHandler {
+public class OSMChangeParser extends DefaultHandler {
 
-    private static final Logger LOG = LoggerFactory.getLogger(ChangesetParser.class);
+    private static final Logger LOG = LoggerFactory.getLogger(OSMChangeParser.class);
 
     OSM osm;
     boolean inDelete = false; // if false, assume we're in add or modify
     OSMEntity entity;
     long id;
     int nParsed = 0;
-    TLongList nodeRefs;
+    TLongList nodeRefs = new TLongArrayList();
+    TLongList waysModified = new TLongArrayList();
 
-    public ChangesetParser(OSM osm) {
+    public OSMChangeParser(OSM osm) {
         this.osm = osm;
     }
 
@@ -30,7 +34,6 @@ public class ChangesetParser extends DefaultHandler {
             throws SAXException {
 
         String idString = attributes.getValue("id");
-        id = idString == null ? -1 : Long.parseLong(idString);
 
         if (qName.equalsIgnoreCase("ADD") || qName.equalsIgnoreCase("MODIFY")) {
             inDelete = false;
@@ -42,13 +45,16 @@ public class ChangesetParser extends DefaultHandler {
             double lon = Double.parseDouble(attributes.getValue("lon"));
             node.setLatLon(lat, lon);
             entity = node;
+            id = idString == null ? -1 : Long.parseLong(idString);
         } else if (qName.equalsIgnoreCase("WAY")) {
             Way way = new Way();
             entity = way;
-            nodeRefs = new TLongArrayList();
+            nodeRefs.clear();
+            id = idString == null ? -1 : Long.parseLong(idString);
         } else if (qName.equalsIgnoreCase("RELATION")) {
             Relation relation = new Relation();
             entity = relation;
+            id = idString == null ? -1 : Long.parseLong(idString);
         } else if (qName.equalsIgnoreCase("TAG")) {
             entity.addTag(attributes.getValue("k"), attributes.getValue("v"));
         } else if (qName.equalsIgnoreCase("ND")) {
@@ -62,12 +68,11 @@ public class ChangesetParser extends DefaultHandler {
         if (nParsed % 1000000 == 0) {
             LOG.info(" {}M applied", nParsed / 1000000);
         }
+
         if (qName.equalsIgnoreCase("DELETE")) {
             inDelete = false;
             return;
-        }
-
-        if (qName.equalsIgnoreCase("NODE")) {
+        } else if (qName.equalsIgnoreCase("NODE")) {
             if (inDelete) {
                 osm.nodes.remove(id);
             } else {
@@ -75,11 +80,14 @@ public class ChangesetParser extends DefaultHandler {
             }
         } else if (qName.equalsIgnoreCase("WAY")) {
             if (inDelete) {
+                // Remove from index before removing the way itself. This allows the remove method to locate the way.
+                osm.unIndexWay(id);
                 osm.ways.remove(id);
             } else {
                 Way way = ((Way)entity);
                 way.nodes = nodeRefs.toArray();
                 osm.ways.put(id, way);
+                waysModified.add(id); // record that this way was modified for later re-indexing.
             }
         } else if (qName.equalsIgnoreCase("RELATION")) {
             if (inDelete) {
@@ -90,6 +98,23 @@ public class ChangesetParser extends DefaultHandler {
         }
     }
 
-    public void characters(char ch[], int start, int length) throws SAXException { }
+    @Override
+    public void startDocument() {
+        waysModified.clear();
+        nParsed = 0;
+        inDelete = false;
+    }
+
+    @Override
+    public void endDocument() {
+        // After the entire diff has been applied, re-index all the ways that were added or modified.
+        if (!waysModified.isEmpty()) {
+            LOG.debug("Indexing modified ways...");
+            for (int w = 0; w < waysModified.size(); w++) {
+                osm.unIndexWay(id);
+                osm.indexWay(waysModified.get(w), null);
+            }
+        }
+    }
 
 }
