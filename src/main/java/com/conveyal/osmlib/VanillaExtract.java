@@ -75,6 +75,7 @@ public class VanillaExtract {
                 // TODO
             }
         }
+        return 0;
     }
 
     private static class VexHttpHandler extends HttpHandler {
