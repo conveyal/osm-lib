@@ -1,12 +1,14 @@
 package com.conveyal.osmlib;
 
+import com.google.common.io.ByteStreams;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.io.OutputStream;
+import java.io.PipedInputStream;
+import java.io.PipedOutputStream;
 import java.util.List;
-import java.util.zip.Deflater;
 import java.util.zip.GZIPOutputStream;
 
 /**
@@ -23,7 +25,7 @@ public class VexOutput implements OSMEntitySink {
     private OutputStream outputStream;
 
     /* The underlying output stream where VEX data will be written. */
-    private GZIPOutputStream gzipOutputStream;
+//    private GZIPOutputStream gzipOutputStream;
 
     /* The output sink for uncompressed VEX format. */
     private VarIntOutputStream vout;
@@ -106,13 +108,27 @@ public class VexOutput implements OSMEntitySink {
     @Override
     public void writeBegin() throws IOException {
         LOG.info("Writing VEX format...");
-        this.gzipOutputStream = new GZIPOutputStream(outputStream);
+        final PipedOutputStream pipedOut = new PipedOutputStream();
+        new Thread(new Runnable() {
+            @Override
+            public void run() {
+                try {
+                    final PipedInputStream pipedIn = new PipedInputStream(pipedOut);
+                    GZIPOutputStream gzipOutputStream = new GZIPOutputStream(outputStream);
+                    ByteStreams.copy(pipedIn, gzipOutputStream);
+                    gzipOutputStream.close(); // or .finish()
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+            }
+        }, "async-gzip").start();
+
 //        this.gzipOutputStream = new GZIPOutputStream(outputStream) {
 //            {
 //                this.def.setLevel(Deflater.BEST_SPEED);
 //            }
 //        };
-        this.vout = new VarIntOutputStream(gzipOutputStream);
+        this.vout = new VarIntOutputStream(pipedOut);
         vout.writeBytes(VexFormat.HEADER);
     }
 
@@ -120,7 +136,7 @@ public class VexOutput implements OSMEntitySink {
     public void writeEnd() throws IOException {
         checkBlockTransition(VexFormat.VEX_NONE);
         writeBlockEnd(blockCount);
-        gzipOutputStream.close(); // or .finish()
+        vout.close();
         LOG.info("Finished writing VEX format.");
     }
 

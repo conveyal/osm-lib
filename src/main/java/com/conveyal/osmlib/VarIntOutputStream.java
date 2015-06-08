@@ -33,8 +33,6 @@ package com.conveyal.osmlib;
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-import com.conveyal.osmlib.serializer.VarInt;
-
 import java.io.IOException;
 import java.io.OutputStream;
 
@@ -90,6 +88,10 @@ public class VarIntOutputStream {
             value >>>= 7;
         }
         writeByte(value);
+    }
+
+    public void close() throws IOException {
+        os.close();
     }
 
 }
