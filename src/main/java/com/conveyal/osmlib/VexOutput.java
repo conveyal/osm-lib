@@ -1,15 +1,11 @@
 package com.conveyal.osmlib;
 
-import com.google.common.io.ByteStreams;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.io.OutputStream;
-import java.io.PipedInputStream;
-import java.io.PipedOutputStream;
 import java.util.List;
-import java.util.zip.GZIPOutputStream;
 
 /**
  * Neither threadsafe nor reentrant! Create one new instance of the codec per encode operation.
@@ -19,13 +15,11 @@ public class VexOutput implements OSMEntitySink {
 
     private static final Logger LOG = LoggerFactory.getLogger(VexOutput.class);
 
-    private static final int MAX_BLOCK_ENTITIES = 1024 * 1024;
-
     /* The underlying output stream where VEX data will be written. */
     private OutputStream outputStream;
 
-    /* The underlying output stream where VEX data will be written. */
-//    private GZIPOutputStream gzipOutputStream;
+    /**/
+    private AsyncBufferedDeflaterOutputStream deflaterOutputStream;
 
     /* The output sink for uncompressed VEX format. */
     private VarIntOutputStream vout;
@@ -36,29 +30,45 @@ public class VexOutput implements OSMEntitySink {
     /** Track the type of the current block to enforce grouping of entities. */
     private int blockEntityType = VexFormat.VEX_NONE;
 
-    /** Track the number of entities that have been written out in the current block. */
-    private int blockEntityCount = 0;
-
-    /** Track the number of blocks that have been written out to the stream. */
-    private int blockCount = 0;
-
     public VexOutput(OutputStream outputStream) {
         this.outputStream = outputStream;
     }
 
-    private void writeBlockBegin(int eType) throws IOException {
+    private void beginBlock(int eType) throws IOException {
         prevId = prevRef = prevFixedLat = prevFixedLon = 0;
-        vout.writeUInt32(eType);
+        String hs;
+        // TODO use Node.class instead of numeric constants
+        switch (eType) {
+            case VexFormat.VEX_NODE:
+                hs = "VEXN";
+                break;
+            case VexFormat.VEX_WAY:
+                hs = "VEXW";
+                break;
+            case VexFormat.VEX_RELATION:
+                hs = "VEXR";
+                break;
+            default:
+                hs = "NONE";
+                break;
+        }
+        // Set the header that will be prepended to subsequent blocks when they are written out
+        deflaterOutputStream.blockHeader = hs.getBytes();
     }
 
-    /** @param n - the number of entities that were written in this block. */
-    private void writeBlockEnd(int n) throws IOException {
-        vout.writeSInt64(0L);
-        vout.writeUInt32(n);
+    /**
+     * Force the current block to end, even when the output buffer is not full. Should be called when the
+     * entity type changes.
+     */
+    private void endBlock() throws IOException {
+        deflaterOutputStream.endBlock();
     }
 
-    /** Write the fields common to all OSM entities: ID and tags. Also increments the entity counter. */
-    private void writeCommonFields(long id, OSMEntity osmEntity) throws IOException {
+    /**
+     * Call at the beginning of each node, way, or relation.
+     * Write the fields common to all OSM entities: ID and tags. Also increments the entity counter.
+     */
+    private void beginEntity(long id, OSMEntity osmEntity) throws IOException {
         long idDelta = id - prevId;
         if (idDelta == 0) {
             LOG.error("The same entity ID is being written twice in a row. This will prematurely terminate a block.");
@@ -66,24 +76,25 @@ public class VexOutput implements OSMEntitySink {
         vout.writeSInt64(idDelta);
         prevId = id;
         writeTags(osmEntity);
-        blockEntityCount += 1;
+    }
+
+    /** Call at the end of each node, way, or relation. */
+    private void endEntity() {
+        deflaterOutputStream.endMessage();
     }
 
     private void checkBlockTransition(int eType) throws IOException {
         /* If entity type changes (except at the beginning of the first block),
         write a block-end sentinel and an entity count. */
-        if (blockEntityType != eType || blockEntityCount > MAX_BLOCK_ENTITIES) {
+        if (blockEntityType != eType) {
             if (blockEntityType != VexFormat.VEX_NONE) {
-                writeBlockEnd(blockEntityCount);
-                blockCount += 1;
+                endBlock();
                 String type = "entities";
                 if (blockEntityType == VexFormat.VEX_NODE) type = "nodes";
                 if (blockEntityType == VexFormat.VEX_WAY) type = "ways";
                 if (blockEntityType == VexFormat.VEX_RELATION) type = "relations";
-                LOG.info("Wrote block {} with {} {}", blockCount, blockEntityCount, type);
-                blockEntityCount = 0;
             }
-            writeBlockBegin(eType);
+            beginBlock(eType);
             blockEntityType = eType;
         }
     }
@@ -108,42 +119,22 @@ public class VexOutput implements OSMEntitySink {
     @Override
     public void writeBegin() throws IOException {
         LOG.info("Writing VEX format...");
-        final PipedOutputStream pipedOut = new PipedOutputStream();
-        new Thread(new Runnable() {
-            @Override
-            public void run() {
-                try {
-                    final PipedInputStream pipedIn = new PipedInputStream(pipedOut);
-                    GZIPOutputStream gzipOutputStream = new GZIPOutputStream(outputStream);
-                    ByteStreams.copy(pipedIn, gzipOutputStream);
-                    gzipOutputStream.close(); // or .finish()
-                } catch (IOException e) {
-                    e.printStackTrace();
-                }
-            }
-        }, "async-gzip").start();
-
-//        this.gzipOutputStream = new GZIPOutputStream(outputStream) {
-//            {
-//                this.def.setLevel(Deflater.BEST_SPEED);
-//            }
-//        };
-        this.vout = new VarIntOutputStream(pipedOut);
-        vout.writeBytes(VexFormat.HEADER);
+        deflaterOutputStream = new AsyncBufferedDeflaterOutputStream(outputStream);
+        vout = new VarIntOutputStream(deflaterOutputStream);
     }
 
     @Override
     public void writeEnd() throws IOException {
-        checkBlockTransition(VexFormat.VEX_NONE);
-        writeBlockEnd(blockCount);
-        vout.close();
+        endBlock(); // Finish any partially-completed block.
+        deflaterOutputStream.flush(); // Wait for async writes to complete and empty the buffer.
+        vout.close(); // chain-close the DeflaterOutputStream and the downstream OutputStream.
         LOG.info("Finished writing VEX format.");
     }
 
     @Override
     public void writeNode(long id, Node node) throws IOException {
         checkBlockTransition(VexFormat.VEX_NODE);
-        writeCommonFields(id, node);
+        beginEntity(id, node);
         // plain ints should be fine rather than longs:
         // 2**31 = 2147483648
         // 180e7 = 1800000000.0
@@ -153,29 +144,32 @@ public class VexOutput implements OSMEntitySink {
         vout.writeSInt64(fixedLon - prevFixedLon);
         prevFixedLat = fixedLat;
         prevFixedLon = fixedLon;
+        endEntity();
     }
 
     @Override
     public void writeWay(long id, Way way) throws IOException {
         checkBlockTransition(VexFormat.VEX_WAY);
-        writeCommonFields(id, way);
+        beginEntity(id, way);
         vout.writeUInt32(way.nodes.length);
         for (long ref : way.nodes) {
             vout.writeSInt64(ref - prevRef);
             prevRef = ref;
         }
+        endEntity();
     }
 
     @Override
     public void writeRelation(long id, Relation relation) throws IOException {
         checkBlockTransition(VexFormat.VEX_RELATION);
-        writeCommonFields(id, relation);
+        beginEntity(id, relation);
         vout.writeUInt32(relation.members.size());
         for (Relation.Member member : relation.members) {
             vout.writeSInt64(member.id);
             vout.writeUInt32(member.type.ordinal()); // FIXME bad, assign specific numbers
             vout.writeString(member.role);
         }
+        endEntity();
     }
 
 }

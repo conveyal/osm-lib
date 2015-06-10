@@ -3,11 +3,10 @@ package com.conveyal.osmlib;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
-import java.util.Arrays;
 import java.util.List;
-import java.util.zip.GZIPInputStream;
 
 /**
  * Neither threadsafe nor reentrant! Create one new instance of the codec per decode operation.
@@ -35,66 +34,45 @@ public class VexInput implements OSMEntitySource {
     @Override
     public void read() throws IOException {
         LOG.info("Reading VEX format...");
-        this.vin = new VarIntInputStream(new GZIPInputStream(vexStream));
-        byte[] header = vin.readBytes(VexFormat.HEADER.length);
-        if ( ! Arrays.equals(header, VexFormat.HEADER)) {
-            throw new IOException("Corrupt header.");
-        }
         entitySink.writeBegin();
-        boolean done = false;
-        long nBlocks = 0;
-        while ( ! done) {
-            done = readBlock();
-            nBlocks += 1;
-            LOG.info("Read block {}", nBlocks);
+        AsyncBufferedInflater inflater = new AsyncBufferedInflater(vexStream);
+        while (inflater.nextBlock()) {
+            this.vin = new VarIntInputStream(new ByteArrayInputStream(inflater.getBytes()));
+            readBlock(inflater.getEntityType(), inflater.getEntityCount());
+            LOG.info("Processed block {}", inflater.nBlocksRead);
         }
-        long sentinel = vin.readSInt64();
-        long expectedBlocks = vin.readUInt64();
-        if (sentinel != 0) {
-            LOG.error("End block should not contain any elements.");
-        }
-        if (nBlocks != expectedBlocks + 1) {
-            LOG.error("Did not read the expected number of blocks.");
-        }
-        LOG.info("Done reading.");
+        LOG.info("Done reading VEX format.");
         entitySink.writeEnd();
     }
 
-
-    public boolean readBlock() throws IOException {
+    public void readBlock(int entityType, int nEntitiesExpected) throws IOException {
         // Reset delta coding fields
         id = ref = prevFixedLat = prevFixedLon = 0;
-        int blockType = vin.readUInt32();
-        if (blockType == VexFormat.VEX_NONE) return true; // NONE block indicates end of file
-        boolean blockEnd = false;
-        int nRead = 0;
-        while ( ! blockEnd) {
-            switch (blockType) {
+        // TODO limit number of entities per block ?
+        for (int i = 0 ; i < nEntitiesExpected; i++) {
+            switch (entityType) {
                 case VexFormat.VEX_NODE:
-                    blockEnd = readNode();
+                    readNode();
                     break;
                 case VexFormat.VEX_WAY:
-                    blockEnd = readWay();
+                    readWay();
                     break;
                 case VexFormat.VEX_RELATION:
-                    blockEnd = readRelation();
+                    readRelation();
                     break;
                 default:
                     throw new RuntimeException("Unrecognized block type. Corrupt VEX data.");
             }
-            nRead += 1;
         }
-        // We should have read the number of entities indicated by the input stream, plus the terminator entity.
-        int expected_n_entities = vin.readUInt32();
-        if (nRead != expected_n_entities + 1) {
-            throw new IOException("Block length mismatch.");
-        }
-        return false;
+        // TODO check that byte stream is exhausted, number of entities matches expected.
     }
 
     public List<OSMEntity.Tag> readTags() throws IOException {
         OSMEntity tagged = new Node();
         int nTags = vin.readUInt32();
+        if (nTags > 500) {
+            throw new RuntimeException(String.format("Entity has %d tags, this looks like a corrupted file.", nTags));
+        }
         for (int i = 0; i < nTags; i++) {
             String key = vin.readString();
             String val = vin.readString();
@@ -103,11 +81,10 @@ public class VexInput implements OSMEntitySource {
         return tagged.tags;
     }
 
-    public boolean readNode() throws IOException {
+    public void readNode() throws IOException {
         /* Create a new instance each time because we don't know if this is going in a MapDB or a normal Map. */
         Node node = new Node();
         long idDelta = vin.readSInt64();
-        if (idDelta == 0) return true;
         id += idDelta;
         node.tags = readTags();
         node.fixedLat = (int) (prevFixedLat + vin.readSInt64());
@@ -115,14 +92,12 @@ public class VexInput implements OSMEntitySource {
         prevFixedLat = node.fixedLat;
         prevFixedLon = node.fixedLon;
         entitySink.writeNode(id, node);
-        return false;
     }
 
-    public boolean readWay() throws IOException {
+    public void readWay() throws IOException {
         /* Create a new instance each time because we don't know if this is going in a MapDB or a normal Map. */
         Way way = new Way();
         long idDelta = vin.readSInt64();
-        if (idDelta == 0) return true;
         id += idDelta;
         way.tags = readTags();
         int nNodes = vin.readUInt32();
@@ -132,16 +107,14 @@ public class VexInput implements OSMEntitySource {
             way.nodes[i] = ref;
         }
         entitySink.writeWay(id, way);
-        return false;
     }
 
     private static OSMEntity.Type[] memberTypeForOrdinal = OSMEntity.Type.values();
 
-    public boolean readRelation() throws IOException {
+    public void readRelation() throws IOException {
         /* Create a new instance each time because we don't know if this is going in a MapDB or a normal Map. */
         Relation relation = new Relation();
         long idDelta = vin.readSInt64();
-        if (idDelta == 0) return true;
         id += idDelta;
         relation.tags = readTags();
         int nMembers = vin.readUInt32();
@@ -154,7 +127,6 @@ public class VexInput implements OSMEntitySource {
         }
         entitySink.writeRelation(id, relation);
         //System.out.println(id + " " + relation.toString());
-        return false;
     }
 
 }
