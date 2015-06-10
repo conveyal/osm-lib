@@ -7,6 +7,7 @@ import java.util.Locale;
 
 /**
  * Write OSM out to a simple human-readable text format.
+ * This seems to be very slow because it's using a printStream and format().
  */
 public class TextOutput implements OSMEntitySink {
 
@@ -34,7 +35,7 @@ public class TextOutput implements OSMEntitySink {
 
     @Override
     public void writeBegin() throws IOException {
-        printStream.print("--- BEGINNING OF OSM TEXT OUTPUT ---");
+        printStream.print("--- BEGINNING OF OSM TEXT OUTPUT ---\n");
     }
 
     @Override
