@@ -19,7 +19,7 @@ public class VexOutput implements OSMEntitySink {
     private OutputStream downstream;
 
     /** A message-oriented output stream that will write out blocks of VEX data when its buffer is filled. */
-    private AsyncBlockOutputStream deflaterOutputStream;
+    private DeflatedBlockWriter blockWriter;
 
     /** The output sink for uncompressed VEX format. */
     private VarIntOutputStream vout;
@@ -38,7 +38,7 @@ public class VexOutput implements OSMEntitySink {
     /** Reset the inter-entity delta coding values and set the entity type for a new block. */
     private void beginBlock(int eType) throws IOException {
         prevId = prevRef = prevFixedLat = prevFixedLon = 0;
-        deflaterOutputStream.setEntityType(eType);
+        blockWriter.setEntityType(eType);
     }
 
     /**
@@ -59,8 +59,12 @@ public class VexOutput implements OSMEntitySink {
      * Called at the end of each node, way, or relation. Tells the downstream block writer that it has received a
      * complete message and may now consider writing a block.
      */
-    private void endEntity() {
-        deflaterOutputStream.endMessage();
+    private void endEntity() throws IOException {
+        if (blockWriter.endEntity()) {
+            // The writer has signaled that a block is finished.
+            // Start a new one, resetting the delta coding variables.
+            beginBlock(currEntityType);
+        }
     }
 
     /**
@@ -72,7 +76,7 @@ public class VexOutput implements OSMEntitySink {
     private void checkBlockTransition(int eType) throws IOException {
         if (currEntityType != eType) {
             if (currEntityType != VexFormat.VEX_NONE) {
-                deflaterOutputStream.endBlock();
+                blockWriter.endBlock();
                 String type = "entities";
                 if (currEntityType == VexFormat.VEX_NODE) type = "nodes";
                 if (currEntityType == VexFormat.VEX_WAY) type = "ways";
@@ -106,14 +110,14 @@ public class VexOutput implements OSMEntitySink {
     @Override
     public void writeBegin() throws IOException {
         LOG.info("Writing VEX format...");
-        deflaterOutputStream = new AsyncBlockOutputStream(downstream);
-        vout = new VarIntOutputStream(deflaterOutputStream);
+        blockWriter = new DeflatedBlockWriter(downstream);
+        vout = new VarIntOutputStream(blockWriter);
     }
 
     @Override
     public void writeEnd() throws IOException {
-        deflaterOutputStream.endBlock(); // Finish any partially-completed block.
-        deflaterOutputStream.close(); // Let writing thread complete then close downstream OutputStream.
+        blockWriter.endBlock(); // Finish any partially-completed block.
+        blockWriter.close(); // Let writing thread complete then close downstream OutputStream.
         LOG.info("Finished writing VEX format.");
     }
 
