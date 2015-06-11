@@ -8,7 +8,8 @@ import java.util.Map;
 public class RoundTripTest extends TestCase {
 
     static final String TEST_FILE = "./src/test/resources/bangor_maine.osm.pbf";
-    //static final String TEST_FILE = "/home/abyrd/osm_data/tokyo_japan.osm.pbf";
+    //static final String TEST_FILE = "/Users/abyrd/geodata/new-york-latest.osm.pbf";
+    //static final String TEST_FILE = "/Users/abyrd/geodata/brussels_belgium.osm.pbf";
 
     public void testVexFile() throws Exception {
 
@@ -80,6 +81,8 @@ public class RoundTripTest extends TestCase {
         for (Map.Entry<K,V> entry : m1.entrySet()) {
             V e1 = entry.getValue();
             V e2 = m2.get(entry.getKey());
+            // System.out.println(e1);
+            // System.out.println(e2);
             assertEquals(e1, e2);
         }
     }

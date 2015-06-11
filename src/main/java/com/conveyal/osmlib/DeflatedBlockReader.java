@@ -1,91 +1,62 @@
 package com.conveyal.osmlib;
 
-import com.google.common.io.ByteStreams;
-import com.google.common.primitives.Ints;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.EOFException;
 import java.io.IOException;
 import java.io.InputStream;
-import java.util.zip.DataFormatException;
-import java.util.zip.Inflater;
+import java.util.concurrent.SynchronousQueue;
 
 /**
- * Read in a deflated block.
+ * A pipeline stage that reads in deflated VEX blocks.
+ * Hands off the results of decompression synchronously through a zero-length blocking "queue".
+ * This is meant to be run in a separate thread.
  */
 public class DeflatedBlockReader implements Runnable {
 
-    private static final Logger LOG = LoggerFactory.getLogger(AsyncBufferedDeflaterOutputStream.class);
+    private static final Logger LOG = LoggerFactory.getLogger(AsyncBlockOutputStream.class);
 
-    public static final int BUFFER_SIZE = 1024 * 1024 * 2;
+    private final SynchronousQueue<VEXBlock> synchronousQueue = new SynchronousQueue<>();
 
     private final InputStream upstream;
-    protected int entityType;
-    protected int nEntities;
-    protected byte[] inflatedData;
-    protected int nBytes;
-    protected boolean eof = false;
 
     public DeflatedBlockReader(InputStream upstream) {
         this.upstream = upstream;
     }
 
     /**
+     * Wait for one block to be available, then return it. Returns null when there are no more blocks.
      */
-    @Override
-    public void run() {
-        readHeader();
-        if (eof) {
-            return;
-        }
-        if (nBytes < 0 || nBytes > BUFFER_SIZE) {
-            LOG.error("File contains strange compressed data size.");
-            return;
-        }
+    public VEXBlock take() {
         try {
-            byte[] deflatedData = new byte[nBytes];
-            inflatedData = new byte[BUFFER_SIZE];
-            ByteStreams.readFully(upstream, deflatedData);
-            Inflater inflater = new Inflater();
-            inflater.setInput(deflatedData);
-            inflater.inflate(inflatedData);
-            LOG.debug("Read block of {} bytes, inflated to {} bytes.", inflater.getTotalIn(), inflater.getTotalOut());
-            LOG.debug("Expected to contain {} entities of type {}.", nEntities, entityType);
-            inflater.end();
-        } catch (IOException e) {
-            e.printStackTrace();
-        } catch (DataFormatException e) {
-            e.printStackTrace();
+            VEXBlock block = synchronousQueue.take();
+            return block;
+        } catch (InterruptedException e) {
+            LOG.error("Interrupted while waiting for a block to become available. This shouldn't happen.");
+            return VEXBlock.END_BLOCK;
         }
     }
 
-    private void readHeader() {
-        byte[] fourBytes = new byte[4];
+    @Override
+    public void run() {
         try {
-            ByteStreams.readFully(upstream, fourBytes);
-            String s = new String(fourBytes);
-            if (s.equals("VEXN")) {
-                entityType = VexFormat.VEX_NODE;
-            } else if (s.equals("VEXW")) {
-                entityType = VexFormat.VEX_WAY;
-            } else if (s.equals("VEXR")) {
-                entityType = VexFormat.VEX_RELATION;
-            } else {
-                LOG.error("Unrecognized block type '{}', aborting VEX read.", entityType);
-                throw new RuntimeException("Uncrecoginzed VEX block type.");
+            while (true) {
+                VEXBlock block = new VEXBlock();
+                block.readDeflated(upstream);
+                if (block.entityType == VexFormat.VEX_NONE) {
+                    // There are no more blocks, end of file.
+                    synchronousQueue.put(VEXBlock.END_BLOCK);
+                    break;
+                } else {
+                    synchronousQueue.put(block);
+                }
             }
-            ByteStreams.readFully(upstream, fourBytes);
-            nEntities = Ints.fromByteArray(fourBytes);
-            ByteStreams.readFully(upstream, fourBytes);
-            nBytes = Ints.fromByteArray(fourBytes);
-        } catch (EOFException e) {
-            // An EOF while reading the block header means there are no more blocks.
-            LOG.debug("Hit end of file, no more blocks to read.");
-            eof = true;
+            upstream.close();
+        } catch (InterruptedException e) {
+            LOG.error("Interrupted while trying to hand off a block. This shouldn't happen.");
         } catch (IOException e) {
-            // Other IO exceptions besides EOF are not expected.
-            e.printStackTrace();
+            throw new RuntimeException(e);
         }
     }
+
 }

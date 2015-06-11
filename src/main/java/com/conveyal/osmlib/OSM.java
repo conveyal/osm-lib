@@ -14,10 +14,10 @@ import java.util.Map;
 import java.util.NavigableSet;
 
 /**
- * OTP representation of a subset of OpenStreetMap. One or more PBF files can be loaded into this
- * object, which serves as a simplistic database for fetching and iterating over OSM elements.
- * Using DB TreeMaps is often not any slower than memory. HashMaps are both bigger and slower.
- * This is probably because our keys are so small. A hashmap needs to store both the long key and its hash.
+ * osm-lib representation of a subset of OpenStreetMap. One or more OSM files (e.g. PBF) can be loaded into this
+ * object, which serves as a simple in-process database for fetching and iterating over OSM elements.
+ * Using DB TreeMaps is often not any slower than memory. HashMaps are both bigger and slower because our keys
+ * are so small: a hashmap needs to store both the long key and its hash.
  *
  * FIXME rename this to OSMStorage or OSMDatabase
  */
@@ -122,7 +122,7 @@ public class OSM implements OSMEntitySink { // TODO implements OSMEntitySource, 
         }
     }
 
-    // TODO readPbf, writePbf
+    // TODO readPbf, writePbf methods
     public void readVex(InputStream inputStream) {
         try {
             OSMEntitySource  source = new VexInput(inputStream, this);

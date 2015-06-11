@@ -9,22 +9,30 @@ import java.io.InputStream;
 import java.util.List;
 
 /**
- * Neither threadsafe nor reentrant! Create one new instance of the codec per decode operation.
- * Created by abyrd on 2015-05-04
+ * Reads a stream of VEX data, constructing OSM model objects from the stream and pushing them through to a sink.
+ * This is neither threadsafe nor reentrant! Create one instance of this decoder per decode operation.
  */
 public class VexInput implements OSMEntitySource {
 
     private static final Logger LOG = LoggerFactory.getLogger(VexInput.class);
 
-    /* The input stream providing decompressed VEX format. */
+    /* For reading varints out of the decompressed VEX blocks. */
     private VarIntInputStream vin;
 
     /* Persistent values for delta coding. */
     private long id, ref, prevFixedLat, prevFixedLon;
 
+    /* The stream of compressed VEX blocks. */
     private InputStream vexStream;
 
+    /* The OSM entities reconstructed from the VEX stream will be pushed through to this sink. */
     private OSMEntitySink entitySink;
+
+    private int nNodesRead = 0;
+
+    private int nWaysRead = 0;
+
+    private int nRelationsRead = 0;
 
     public VexInput(InputStream vexStream, OSMEntitySink sink) {
         this.vexStream = vexStream;
@@ -35,13 +43,20 @@ public class VexInput implements OSMEntitySource {
     public void read() throws IOException {
         LOG.info("Reading VEX format...");
         entitySink.writeBegin();
-        AsyncBufferedInflater inflater = new AsyncBufferedInflater(vexStream);
-        while (inflater.nextBlock()) {
-            this.vin = new VarIntInputStream(new ByteArrayInputStream(inflater.getBytes()));
-            readBlock(inflater.getEntityType(), inflater.getEntityCount());
-            LOG.info("Processed block {}", inflater.nBlocksRead);
+        AsyncBlockInput blockInput = new AsyncBlockInput(vexStream);
+        int n = 0;
+        while (true) {
+            VEXBlock block = blockInput.nextBlock();
+            if (block == VEXBlock.END_BLOCK) {
+                break;
+            }
+            vin = new VarIntInputStream(new ByteArrayInputStream(block.data));
+            // Decode the deflated byte stream into OSM entities and push them through to the sink.
+            readBlock(block.entityType, block.nEntities);
+            LOG.info("Processed {} blocks", ++n);
         }
         LOG.info("Done reading VEX format.");
+        LOG.info("Read {} nodes, {} ways, {} relations.", nNodesRead, nWaysRead, nRelationsRead);
         entitySink.writeEnd();
     }
 
@@ -91,6 +106,7 @@ public class VexInput implements OSMEntitySource {
         node.fixedLon = (int) (prevFixedLon + vin.readSInt64());
         prevFixedLat = node.fixedLat;
         prevFixedLon = node.fixedLon;
+        nNodesRead++;
         entitySink.writeNode(id, node);
     }
 
@@ -106,6 +122,7 @@ public class VexInput implements OSMEntitySource {
             ref += vin.readSInt64();
             way.nodes[i] = ref;
         }
+        nWaysRead++;
         entitySink.writeWay(id, way);
     }
 
@@ -125,6 +142,7 @@ public class VexInput implements OSMEntitySource {
             member.role = vin.readString();
             relation.members.add(member);
         }
+        nRelationsRead++;
         entitySink.writeRelation(id, relation);
         //System.out.println(id + " " + relation.toString());
     }

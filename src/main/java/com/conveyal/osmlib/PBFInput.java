@@ -25,7 +25,7 @@ import java.util.List;
 
 /**
  * An OpenStreetMap entity source that reads from the PBF Format. This class implements callbacks for
- * the crosby.binary OSMPBF library. It loads OSM data into the OTP model classes, then sends those
+ * the crosby.binary OSMPBF library. It loads OSM data into the osm-lib model classes, then sends those
  * objects through to the specified OSM entity sink.
  */
 public class PBFInput extends BinaryParser implements OSMEntitySource {
@@ -211,6 +211,7 @@ public class PBFInput extends BinaryParser implements OSMEntitySource {
     @Override
     public void complete() {
         LOG.info("Done parsing PBF.");
+        LOG.info("Read {} nodes, {} ways, {} relations.", nodeCount, wayCount, relationCount);
     }
 
     private static String human(long n) {

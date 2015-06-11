@@ -8,65 +8,42 @@ import java.io.OutputStream;
 import java.util.List;
 
 /**
- * Neither threadsafe nor reentrant! Create one new instance of the codec per encode operation.
- * Created by abyrd on 2015-05-04
+ * Consumes OSM entity objects and writes a stream of VEX data blocks to a specified output stream.
+ * This is neither threadsafe nor reentrant! Create one instance of this encoder per encode operation.
  */
 public class VexOutput implements OSMEntitySink {
 
     private static final Logger LOG = LoggerFactory.getLogger(VexOutput.class);
 
-    /* The underlying output stream where VEX data will be written. */
-    private OutputStream outputStream;
+    /** The underlying output stream where VEX data will be written. */
+    private OutputStream downstream;
 
-    /**/
-    private AsyncBufferedDeflaterOutputStream deflaterOutputStream;
+    /** A message-oriented output stream that will write out blocks of VEX data when its buffer is filled. */
+    private AsyncBlockOutputStream deflaterOutputStream;
 
-    /* The output sink for uncompressed VEX format. */
+    /** The output sink for uncompressed VEX format. */
     private VarIntOutputStream vout;
 
-    /* Persistent values for delta decoding. */
+    /** Values retained from one entity to the next within a block for delta decoding. */
     private long prevId, prevRef, prevFixedLat, prevFixedLon;
 
-    /** Track the type of the current block to enforce grouping of entities. */
-    private int blockEntityType = VexFormat.VEX_NONE;
+    /** The entity type of the current block to enforce grouping of entities by type. */
+    private int currEntityType = VexFormat.VEX_NONE;
 
-    public VexOutput(OutputStream outputStream) {
-        this.outputStream = outputStream;
+    /** Construct a new VEX output encoder which writes to the given downstream OutputStream. */
+    public VexOutput(OutputStream downstream) {
+        this.downstream = downstream;
     }
 
+    /** Reset the inter-entity delta coding values and set the entity type for a new block. */
     private void beginBlock(int eType) throws IOException {
         prevId = prevRef = prevFixedLat = prevFixedLon = 0;
-        String hs;
-        // TODO use Node.class instead of numeric constants
-        switch (eType) {
-            case VexFormat.VEX_NODE:
-                hs = "VEXN";
-                break;
-            case VexFormat.VEX_WAY:
-                hs = "VEXW";
-                break;
-            case VexFormat.VEX_RELATION:
-                hs = "VEXR";
-                break;
-            default:
-                hs = "NONE";
-                break;
-        }
-        // Set the header that will be prepended to subsequent blocks when they are written out
-        deflaterOutputStream.blockHeader = hs.getBytes();
+        deflaterOutputStream.setEntityType(eType);
     }
 
     /**
-     * Force the current block to end, even when the output buffer is not full. Should be called when the
-     * entity type changes.
-     */
-    private void endBlock() throws IOException {
-        deflaterOutputStream.endBlock();
-    }
-
-    /**
-     * Call at the beginning of each node, way, or relation.
-     * Write the fields common to all OSM entities: ID and tags. Also increments the entity counter.
+     * Called at the beginning of each node, way, or relation.
+     * Writes the fields common to all OSM entities (ID and tags) and increments the entity counter.
      */
     private void beginEntity(long id, OSMEntity osmEntity) throws IOException {
         long idDelta = id - prevId;
@@ -78,27 +55,37 @@ public class VexOutput implements OSMEntitySink {
         writeTags(osmEntity);
     }
 
-    /** Call at the end of each node, way, or relation. */
+    /**
+     * Called at the end of each node, way, or relation. Tells the downstream block writer that it has received a
+     * complete message and may now consider writing a block.
+     */
     private void endEntity() {
         deflaterOutputStream.endMessage();
     }
 
+    /**
+     * Called at the beginning of each node, way, or relation to enforce grouping of entities by type.
+     * If the entity type has changed since the last entity (except at the beginning of the first block),
+     * ends the block and starts a new one of the new type. Each block must contain entities of only a single type.
+     * TODO react to intermixing of entity types in the input by holding one working block of each type.
+     */
     private void checkBlockTransition(int eType) throws IOException {
-        /* If entity type changes (except at the beginning of the first block),
-        write a block-end sentinel and an entity count. */
-        if (blockEntityType != eType) {
-            if (blockEntityType != VexFormat.VEX_NONE) {
-                endBlock();
+        if (currEntityType != eType) {
+            if (currEntityType != VexFormat.VEX_NONE) {
+                deflaterOutputStream.endBlock();
                 String type = "entities";
-                if (blockEntityType == VexFormat.VEX_NODE) type = "nodes";
-                if (blockEntityType == VexFormat.VEX_WAY) type = "ways";
-                if (blockEntityType == VexFormat.VEX_RELATION) type = "relations";
+                if (currEntityType == VexFormat.VEX_NODE) type = "nodes";
+                if (currEntityType == VexFormat.VEX_WAY) type = "ways";
+                if (currEntityType == VexFormat.VEX_RELATION) type = "relations";
             }
             beginBlock(eType);
-            blockEntityType = eType;
+            currEntityType = eType;
         }
     }
 
+    /**
+     * Writes out a list of tags for the given OSM entity. This code is the same for all entity types.
+     */
     private void writeTags(OSMEntity tagged) throws IOException {
         List<OSMEntity.Tag> tags = tagged.tags;
         // TODO This could stand a little more abstraction, like List<Tag> getTags()
@@ -119,15 +106,14 @@ public class VexOutput implements OSMEntitySink {
     @Override
     public void writeBegin() throws IOException {
         LOG.info("Writing VEX format...");
-        deflaterOutputStream = new AsyncBufferedDeflaterOutputStream(outputStream);
+        deflaterOutputStream = new AsyncBlockOutputStream(downstream);
         vout = new VarIntOutputStream(deflaterOutputStream);
     }
 
     @Override
     public void writeEnd() throws IOException {
-        endBlock(); // Finish any partially-completed block.
-        deflaterOutputStream.flush(); // Wait for async writes to complete and empty the buffer.
-        vout.close(); // chain-close the DeflaterOutputStream and the downstream OutputStream.
+        deflaterOutputStream.endBlock(); // Finish any partially-completed block.
+        deflaterOutputStream.close(); // Let writing thread complete then close downstream OutputStream.
         LOG.info("Finished writing VEX format.");
     }
 
@@ -166,7 +152,7 @@ public class VexOutput implements OSMEntitySink {
         vout.writeUInt32(relation.members.size());
         for (Relation.Member member : relation.members) {
             vout.writeSInt64(member.id);
-            vout.writeUInt32(member.type.ordinal()); // FIXME bad, assign specific numbers
+            vout.writeUInt32(member.type.ordinal()); // FIXME ordinal is bad. assign specific codes to types.
             vout.writeString(member.role);
         }
         endEntity();
