@@ -117,8 +117,7 @@ public class OSM implements OSMEntitySink { // TODO implements OSMEntitySource, 
             PBFInput pbfSource = new PBFInput(new FileInputStream(filePath), this);
             pbfSource.read();
         } catch (Exception ex) {
-            LOG.error("Error occurred while parsing PBF file '{}'", filePath);
-            ex.printStackTrace();
+            throw new RuntimeException("Error occurred while parsing PBF file " + filePath, ex);
         }
     }
 
