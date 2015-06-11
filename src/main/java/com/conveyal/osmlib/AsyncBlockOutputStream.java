@@ -17,13 +17,17 @@ public class AsyncBlockOutputStream extends MessageOutputStream {
 
     private static final Logger LOG = LoggerFactory.getLogger(AsyncBlockOutputStream.class);
 
+    /**
+     * The maximum expected message size. A block will be considered finished when it is within this distance
+     * of the maximum block size.
+     */
+    public static final int MAX_MESSAGE_SIZE = 1024 * 16;
+
     private int currEntityType;
 
     private byte[] buf = new byte[VEXBlock.BUFFER_SIZE];
 
     private int pos = 0;
-
-    private int posMessage = 0;
 
     private int nMessagesInBlock = 0;
 
@@ -56,18 +60,20 @@ public class AsyncBlockOutputStream extends MessageOutputStream {
     /** Add a byte to the message fragment currently being constructed, flushing out a block as needed. */
     @Override
     public void write (int b) {
-        if (posMessage >= buf.length) {
-            // Adding to the the current message fragment is going to overflow the buffer. Start a new block.
-            endBlock();
-        }
-        buf[posMessage++] = (byte) b;
+        // TODO catch out of range exceptions and warn that the message was too big.
+        buf[pos++] = (byte) b;
     }
 
-    /** Declare the message fragment under construction to be complete. */
+    /**
+     * Declare the message fragment under construction to be complete.
+     * When there's not much space left in the buffer, this will end the block and start a new one.
+     */
     @Override
     public void endMessage() {
         nMessagesInBlock += 1;
-        pos = posMessage;
+        if (pos > buf.length - MAX_MESSAGE_SIZE) {
+            endBlock();
+        }
     }
 
     /**
@@ -88,15 +94,8 @@ public class AsyncBlockOutputStream extends MessageOutputStream {
             // Send this block to the compression/writer thread synchronously (call blocks until thread is ready)
             blockWriter.handOff(block);
 
-            // Copy any remaining message fragment from the old buffer to the beginning of a new buffer.
+            // Create a new buffer and reset the position and message counters
             buf = new byte[VEXBlock.BUFFER_SIZE];
-            int messageFragmentLength = posMessage - pos;
-            if (messageFragmentLength > 0) {
-                System.arraycopy(block.data, pos, buf, 0, messageFragmentLength);
-            }
-
-            // Reset the position and message counters
-            posMessage = messageFragmentLength;
             pos = 0;
             nMessagesInBlock = 0;
 

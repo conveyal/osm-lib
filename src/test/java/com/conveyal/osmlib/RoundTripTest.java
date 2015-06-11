@@ -7,9 +7,9 @@ import java.util.Map;
 
 public class RoundTripTest extends TestCase {
 
-    static final String TEST_FILE = "./src/test/resources/bangor_maine.osm.pbf";
+    //static final String TEST_FILE = "./src/test/resources/bangor_maine.osm.pbf";
     //static final String TEST_FILE = "/Users/abyrd/geodata/new-york-latest.osm.pbf";
-    //static final String TEST_FILE = "/Users/abyrd/geodata/brussels_belgium.osm.pbf";
+    static final String TEST_FILE = "/Users/abyrd/geodata/brussels_belgium.osm.pbf";
 
     public void testVexFile() throws Exception {
 

@@ -43,10 +43,10 @@ public class VexInput implements OSMEntitySource {
     public void read() throws IOException {
         LOG.info("Reading VEX format...");
         entitySink.writeBegin();
-        AsyncBlockInput blockInput = new AsyncBlockInput(vexStream);
+        DeflatedBlockReader blockReader = new DeflatedBlockReader(vexStream);
         int n = 0;
         while (true) {
-            VEXBlock block = blockInput.nextBlock();
+            VEXBlock block = blockReader.nextBlock();
             if (block == VEXBlock.END_BLOCK) {
                 break;
             }
