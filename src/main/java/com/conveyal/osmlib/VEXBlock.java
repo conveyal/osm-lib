@@ -50,8 +50,8 @@ public class VEXBlock {
                 throw new RuntimeException(e);
             }
         }
-        LOG.info("Read block of {} bytes.", nBytes);
-        LOG.info("Contained {} entities with type {}.", nEntities, entityType);
+        LOG.debug("Read block of {} bytes.", nBytes);
+        LOG.debug("Contained {} entities with type {}.", nEntities, entityType);
     }
 
     /** */
@@ -103,8 +103,8 @@ public class VEXBlock {
             out.write(Ints.toByteArray(nEntities));
             out.write(Ints.toByteArray(deflatedSize));
             out.write(deflatedData, 0, deflatedSize);
-            LOG.info("Wrote block of {} bytes.", deflatedSize);
-            LOG.info("Contained {} entities with type {}.", nEntities, entityType);
+            LOG.debug("Wrote block of {} bytes.", deflatedSize);
+            LOG.debug("Contained {} entities with type {}.", nEntities, entityType);
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
