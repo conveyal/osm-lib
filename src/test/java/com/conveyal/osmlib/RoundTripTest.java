@@ -7,9 +7,7 @@ import java.util.Map;
 
 public class RoundTripTest extends TestCase {
 
-    //static final String TEST_FILE = "./src/test/resources/bangor_maine.osm.pbf";
-    //static final String TEST_FILE = "/Users/abyrd/geodata/new-york-latest.osm.pbf";
-    static final String TEST_FILE = "/Users/abyrd/geodata/brussels_belgium.osm.pbf";
+    static final String TEST_FILE = "./src/test/resources/porto_portugal.osm.pbf";
 
     public void testVexFile() throws Exception {
 
@@ -71,6 +69,7 @@ public class RoundTripTest extends TestCase {
     }
 
     private void compareOsm (OSM original, OSM copy) {
+        System.out.println("Checking that OSM data is identical after round-trip...");
         compareMap(original.nodes, copy.nodes);
         compareMap(original.ways, copy.ways);
         compareMap(original.relations, copy.relations);
