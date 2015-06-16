@@ -165,8 +165,8 @@ public class PBFOutput implements OSMEntitySink {
         denseNodesBuilder.addId(idDelta);
 
         /* Fixed-precision latitude and longitude */
-        long fixedLat = (long) (node.fixedLat); // TODO are longs necessary?
-        long fixedLon = (long) (node.fixedLon);
+        long fixedLat = (long) (node.fixedLat * 10); // TODO are longs necessary?
+        long fixedLon = (long) (node.fixedLon * 10); // TODO use 1e7 instead of 1e6 like PBF?
         long fixedLatDelta = fixedLat - prevFixedLat;
         long fixedLonDelta = fixedLon - prevFixedLon;
         prevFixedLat = fixedLat;

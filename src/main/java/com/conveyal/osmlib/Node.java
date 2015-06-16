@@ -6,7 +6,7 @@ public class Node extends OSMEntity implements Serializable {
 
     private static final long serialVersionUID = 1L;
 
-    private static final double FIXED_PRECISION_FACTOR = 1e6;
+    private static final double FIXED_PRECISION_FACTOR = 1e6; // FIXME PBF uses 1e7, this low-bit noise might contribute to file size difference.
 
     public Node () { }
 
