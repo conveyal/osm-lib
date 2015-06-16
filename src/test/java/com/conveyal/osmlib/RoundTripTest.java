@@ -33,6 +33,29 @@ public class RoundTripTest extends TestCase {
 
     }
 
+    public void testPbfFile() throws Exception {
+
+        // Load OSM data from PBF
+        OSM osmOriginal = new OSM(null);
+        osmOriginal.loadFromPBFFile(TEST_FILE);
+        assertTrue(osmOriginal.nodes.size() > 1);
+        assertTrue(osmOriginal.ways.size() > 1);
+        assertTrue(osmOriginal.relations.size() > 1);
+
+        // Write OSM data out to a PBF file
+        File ourPbfFile = File.createTempFile("test", "pbf");
+        OutputStream outputStream = new FileOutputStream(ourPbfFile);
+        osmOriginal.writePbf(outputStream);
+
+        // Read OSM data back in from VEX file
+        OSM osmCopy = new OSM(null);
+        osmCopy.loadFromPBFFile(ourPbfFile.toString());
+
+        // Compare PBF data to VEX data
+        compareOsm(osmOriginal, osmCopy);
+
+    }
+
     public void testVexStream() throws Exception {
 
         // Create an input/output pipe pair so we can read in a VEX stream without using a file
