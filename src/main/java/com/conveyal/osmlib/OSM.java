@@ -138,6 +138,12 @@ public class OSM implements OSMEntitySink { // TODO implements OSMEntitySource, 
         this.writeToSink(sink);
     }
 
+    /** Write the contents of this OSM MapDB out to a stream in PBF binary format. */
+    public void writePbf(OutputStream outputStream) throws IOException {
+        OSMEntitySink sink = new PBFOutput(outputStream);
+        this.writeToSink(sink);
+    }
+
     /** Write the contents of this OSM MapDB out to an OSM entity sink. */
     public void writeToSink(OSMEntitySink sink) throws IOException {
         sink.writeBegin();
