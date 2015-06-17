@@ -130,12 +130,16 @@ public class PBFOutput implements OSMEntitySink, Runnable {
         }
     }
 
-    // TODO reuse this function in both PBF and VEX output
-    private int deflate (byte[] input, byte[] output) {
+    /**
+     * Deflate the given input data buffer into the given output byte buffer.
+     * Used in both PBF and VEX output.
+     * @return the deflated size of the data, or -1 if deflate did not reduce the data size.
+     */
+    public static int deflate (byte[] input, byte[] output) {
         int pos = 0;
         // Do not compress an empty data block, it will spin forever trying to fill the zero-length output buffer.
         if (input.length > 0) {
-            Deflater deflater = new Deflater(Deflater.BEST_COMPRESSION, false); // include gzip header and checksum
+            Deflater deflater = new Deflater(Deflater.DEFAULT_COMPRESSION, false); // include gzip header and checksum
             deflater.setInput(input, 0, input.length);
             deflater.finish(); // There will be no more input after this byte array.
             while (!deflater.finished()) {

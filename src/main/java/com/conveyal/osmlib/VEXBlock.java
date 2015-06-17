@@ -9,7 +9,6 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.util.zip.DataFormatException;
-import java.util.zip.Deflater;
 import java.util.zip.Inflater;
 
 /**
@@ -93,10 +92,12 @@ public class VEXBlock {
         }
     }
 
-    /** */
     public void writeDeflated(OutputStream out) {
         byte[] deflatedData = new byte[nBytes]; // FIXME in theory, deflate could make the block larger
-        int deflatedSize = deflate(deflatedData);
+        int deflatedSize = PBFOutput.deflate(data, deflatedData);
+        if (deflatedSize < 0) {
+            throw new RuntimeException("Deflate made a block bigger.");
+        }
         try {
             // Header, number of messages and size of compressed data as two 4-byte big-endian ints, compressed data.
             out.write(HEADERS[entityType]);
@@ -108,25 +109,6 @@ public class VEXBlock {
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
-    }
-
-    /**
-     * Deflate this VEXBlocks's data field into the given output byte buffer.
-     * @return the deflated size of the data.
-     */
-    private int deflate (byte[] output) {
-        int pos = 0;
-        // Do not compress an empty data block, it will spin forever trying to fill the zero-length output buffer.
-        if (nBytes > 0) {
-            Deflater deflater = new Deflater(Deflater.BEST_COMPRESSION, false); // include gzip header and checksum
-            deflater.setInput(data, 0, nBytes);
-            deflater.finish(); // There will be no more input after this byte array.
-            while (!deflater.finished()) {
-                pos += deflater.deflate(output, pos, output.length - pos, Deflater.SYNC_FLUSH);
-                // FIXME use function from PBF output that detects no-shrink condition
-            }
-        }
-        return pos;
     }
 
     /** Inflate the given byte buffer into this VEXBlock's data field. */
