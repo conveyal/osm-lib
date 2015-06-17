@@ -36,6 +36,7 @@ public class StringTable {
     public void clear() {
         stringForCode.clear();
         codeForString.clear();
+        stringForCode.add(""); // zero is a special value, indicating the end of a list of KV pairs for a single node.
     }
 
     public Osmformat.StringTable.Builder toBuilder () {
