@@ -23,7 +23,7 @@ public class VEXBlock {
     public static final VEXBlock END_BLOCK = new VEXBlock();
 
     /** Large blocks are not better. Stepping size down (32, 16, 8, 4, 2, 1MB) best size is achieved at 2MB. */
-    public static final int BUFFER_SIZE = 1024 * 1024 * 2;
+    public static final int BUFFER_SIZE = 1024 * 1024 * 1;
 
     /** Header strings for each kind of OSM entity. TODO move this to OSMEntity. */
     private static final byte[][] HEADERS = new byte[][] {
