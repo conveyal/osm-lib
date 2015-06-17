@@ -84,7 +84,7 @@ public class PBFOutput implements OSMEntitySink {
         byte[] deflatedBlock = new byte[serializedBlock.length];
         int deflatedSize = deflate(serializedBlock, deflatedBlock);
         if (deflatedSize < 0) {
-            LOG.info("Deflate did not reduce the size of a block. Saving it uncompressed.");
+            LOG.debug("Deflate did not reduce the size of a block. Saving it uncompressed.");
             blobBuilder.setRaw(ByteString.copyFrom(serializedBlock));
         } else {
             blobBuilder.setZlibData(ByteString.copyFrom(deflatedBlock, 0, deflatedSize));
