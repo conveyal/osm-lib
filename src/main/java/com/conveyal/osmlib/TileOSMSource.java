@@ -8,14 +8,16 @@ import org.slf4j.LoggerFactory;
 import java.io.IOException;
 import java.util.NavigableSet;
 
+/** An OSM source that pulls web Mercator tiles out of a disk-backed OSM store. */
 public class TileOSMSource implements OSMEntitySource {
 
     protected static final Logger LOG = LoggerFactory.getLogger(TileOSMSource.class);
 
-    private static final int ZOOM = 12;
     private int minX, minY, maxX, maxY;
 
-    public TileOSMSource(OSM osm) {
+    private OSM osm;
+
+    public TileOSMSource (OSM osm) {
         this.osm = osm;
     }
 
@@ -38,10 +40,7 @@ public class TileOSMSource implements OSMEntitySource {
 
     }
 
-    private OSM osm;
-    public OSMEntitySink sink;
-
-    public void read() {
+    public void copyTo (OSMEntitySink sink) {
         // Avoid writing out shared/intersection nodes more than once. Besides being wasteful, the first node in one way
         // may be the last node in the previous way output, which would create a node ID delta of zero and prematirely
         // end the block.

@@ -42,9 +42,8 @@ public class PBFInput extends BinaryParser implements OSMEntitySource {
         "highway", "parking", "bicycle", "name"
     };
 
-    public PBFInput(InputStream inputStream, OSMEntitySink entitySink) {
+    public PBFInput(InputStream inputStream) {
         this.inputStream = inputStream;
-        this.entitySink = entitySink;
     }
 
     // Accepting all tags increases size by about 15 percent when storing all elements.
@@ -224,7 +223,8 @@ public class PBFInput extends BinaryParser implements OSMEntitySource {
     }
 
     @Override
-    public void read() throws IOException {
+    public void copyTo(OSMEntitySink sink) throws IOException {
+        entitySink = sink;
         entitySink.writeBegin();
         new BlockInputStream(inputStream, this).process();
         entitySink.writeEnd();

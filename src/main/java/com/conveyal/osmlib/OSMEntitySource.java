@@ -1,5 +1,7 @@
 package com.conveyal.osmlib;
 
+import java.io.FileInputStream;
+import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
 
@@ -11,6 +13,21 @@ import java.io.InputStream;
 public interface OSMEntitySource {
 
     /** Read the OSM entities from this source and pump them through to the sink. */
-    public abstract void read() throws IOException; // TODO write(sink) and implement on OSM class itself
+    public abstract void copyTo (OSMEntitySink sink) throws IOException;
+
+    public static OSMEntitySource forFile (String path) {
+        try {
+            InputStream inputStream = new FileInputStream(path);
+            if (path.endsWith(".pbf")) {
+                return new PBFInput(inputStream);
+            } else if (path.endsWith(".vex")) {
+                return new VexInput(inputStream);
+            } else {
+                return null;
+            }
+        } catch (FileNotFoundException e) {
+            throw new RuntimeException(e);
+        }
+    }
 
 }

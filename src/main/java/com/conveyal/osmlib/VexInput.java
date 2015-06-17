@@ -34,13 +34,13 @@ public class VexInput implements OSMEntitySource {
 
     private int nRelationsRead = 0;
 
-    public VexInput(InputStream vexStream, OSMEntitySink sink) {
+    public VexInput(InputStream vexStream) {
         this.vexStream = vexStream;
-        this.entitySink = sink;
     }
 
     @Override
-    public void read() throws IOException {
+    public void copyTo(OSMEntitySink sink) throws IOException {
+        entitySink = sink;
         LOG.info("Reading VEX format...");
         entitySink.writeBegin();
         DeflatedBlockReader blockReader = new DeflatedBlockReader(vexStream);

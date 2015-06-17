@@ -1,10 +1,9 @@
 package com.conveyal.osmlib;
 
-import com.conveyal.osmlib.Node;
-import com.conveyal.osmlib.Way;
-import com.conveyal.osmlib.Relation;
-
+import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.OutputStream;
 
 /**
  * Created by abyrd on 2015-05-04
@@ -23,5 +22,22 @@ public interface OSMEntitySink {
     public void writeRelation(long id, Relation relation) throws IOException;
 
     public void writeEnd() throws IOException;
+
+    public static OSMEntitySink forFile (String path) {
+        try {
+            OutputStream outputStream = new FileOutputStream(path);
+            if (path.endsWith(".pbf")) {
+                return new PBFOutput(outputStream);
+            } else if (path.endsWith(".vex")) {
+                return new VexOutput(outputStream);
+            } else if (path.endsWith(".txt")) {
+                return new TextOutput(outputStream);
+            } else {
+                return null;
+            }
+        } catch (FileNotFoundException e) {
+            throw new RuntimeException(e);
+        }
+    }
 
 }

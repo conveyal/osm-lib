@@ -122,8 +122,8 @@ class Surface extends JPanel implements ActionListener, MouseListener, MouseWhee
             URL url = new URL(urlString);
             InputStream vexStream = url.openStream();
             OSMEntitySink graphicsSink = new GraphicsSink(g2d);
-            OSMEntitySource vexSource = new VexInput(vexStream, graphicsSink);
-            vexSource.read();
+            OSMEntitySource vexSource = new VexInput(vexStream);
+            vexSource.copyTo(graphicsSink);
         } catch (Exception ex) {
             ex.printStackTrace();
         }

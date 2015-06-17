@@ -21,7 +21,7 @@ import java.util.NavigableSet;
  *
  * FIXME rename this to OSMStorage or OSMDatabase
  */
-public class OSM implements OSMEntitySink { // TODO implements OSMEntitySource, or make separate source/sink wrappers
+public class OSM implements OSMEntitySource, OSMEntitySink {
 
     private static final Logger LOG = LoggerFactory.getLogger(OSM.class);
 
@@ -110,22 +110,42 @@ public class OSM implements OSMEntitySink { // TODO implements OSMEntitySource, 
         db.createAtomicLong("timestamp", 0);
 
     }
-    
-    public void loadFromPBFFile (String filePath) {
+
+    // TODO put these read/write methods on all sources/sinks
+    public void readFromFile(String filePath) {
         try {
-            LOG.info("Reading PBF from file '{}'.", filePath);
-            PBFInput pbfSource = new PBFInput(new FileInputStream(filePath), this);
-            pbfSource.read();
+            LOG.info("Reading OSM from file '{}'.", filePath);
+            OSMEntitySource source = OSMEntitySource.forFile(filePath);
+            source.copyTo(this);
         } catch (Exception ex) {
-            throw new RuntimeException("Error occurred while parsing PBF file " + filePath, ex);
+            throw new RuntimeException("Error occurred while parsing OSM file " + filePath, ex);
         }
     }
 
-    // TODO readPbf, writePbf methods
+    public void writeToFile(String filePath) {
+        try {
+            LOG.info("Writing OSM to file '{}'.", filePath);
+            OSMEntitySink sink = OSMEntitySink.forFile(filePath);
+            this.copyTo(sink);
+        } catch (Exception ex) {
+            throw new RuntimeException("Error occurred while parsing OSM file " + filePath, ex);
+        }
+    }
+
     public void readVex(InputStream inputStream) {
         try {
-            OSMEntitySource  source = new VexInput(inputStream, this);
-            source.read();
+            OSMEntitySource source = new VexInput(inputStream);
+            source.copyTo(this);
+        } catch (IOException ex) {
+            LOG.error("Error occurred while parsing VEX stream.");
+            ex.printStackTrace();
+        }
+    }
+
+    public void readPbf(InputStream inputStream) {
+        try {
+            OSMEntitySource source = new PBFInput(inputStream);
+            source.copyTo(this);
         } catch (IOException ex) {
             LOG.error("Error occurred while parsing VEX stream.");
             ex.printStackTrace();
@@ -135,17 +155,18 @@ public class OSM implements OSMEntitySink { // TODO implements OSMEntitySource, 
     /** Write the contents of this OSM MapDB out to a stream in VEX binary format. */
     public void writeVex(OutputStream outputStream) throws IOException {
         OSMEntitySink sink = new VexOutput(outputStream);
-        this.writeToSink(sink);
+        this.copyTo(sink);
     }
 
     /** Write the contents of this OSM MapDB out to a stream in PBF binary format. */
     public void writePbf(OutputStream outputStream) throws IOException {
         OSMEntitySink sink = new PBFOutput(outputStream);
-        this.writeToSink(sink);
+        this.copyTo(sink);
     }
 
-    /** Write the contents of this OSM MapDB out to an OSM entity sink. */
-    public void writeToSink(OSMEntitySink sink) throws IOException {
+    /** Write the contents of this OSM MapDB out to an OSM entity sink (implements OSMEntitySource). */
+    @Override
+    public void copyTo (OSMEntitySink sink) throws IOException {
         sink.writeBegin();
         for (Map.Entry<Long, Node> nodeEntry : this.nodes.entrySet()) {
             sink.writeNode(nodeEntry.getKey(), nodeEntry.getValue());

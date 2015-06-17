@@ -37,7 +37,7 @@ public class VanillaExtract {
         OSM osm = new OSM(args[0]);
         osm.intersectionDetection = true;
         osm.tileIndexing = true;
-        osm.loadFromPBFFile(args[1]);
+        osm.readFromFile(args[1]);
 
         Thread updateThread = Updater.spawnUpdateThread(osm);
 
@@ -112,8 +112,7 @@ public class VanillaExtract {
                 OSMEntitySink vexOutput = new VexOutput(outStream);
                 TileOSMSource tileSource = new TileOSMSource(osm);
                 tileSource.setBoundingBox(minLat, minLon, maxLat, maxLon);
-                tileSource.sink = vexOutput;
-                tileSource.read();
+                tileSource.copyTo(vexOutput);
                 response.setStatus(HttpStatus.OK_200);
             } catch (Exception ex) {
                 response.setStatus(HttpStatus.BAD_REQUEST_400);

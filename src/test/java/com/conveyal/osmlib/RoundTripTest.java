@@ -13,20 +13,18 @@ public class RoundTripTest extends TestCase {
 
         // Load OSM data from PBF
         OSM osmOriginal = new OSM(null);
-        osmOriginal.loadFromPBFFile(TEST_FILE);
+        osmOriginal.readFromFile(TEST_FILE);
         assertTrue(osmOriginal.nodes.size() > 1);
         assertTrue(osmOriginal.ways.size() > 1);
         assertTrue(osmOriginal.relations.size() > 1);
 
         // Write OSM data out to a VEX file
-        File vexFile = File.createTempFile("test", "vex");
-        OutputStream outputStream = new FileOutputStream(vexFile);
-        osmOriginal.writeVex(outputStream);
+        File vexFile = File.createTempFile("test", ".vex");
+        osmOriginal.writeToFile(vexFile.getPath());
 
         // Read OSM data back in from VEX file
         OSM osmCopy = new OSM(null);
-        InputStream inputStream = new FileInputStream(vexFile);
-        osmCopy.readVex(inputStream);
+        osmCopy.readFromFile(vexFile.getPath());
 
         // Compare PBF data to VEX data
         compareOsm(osmOriginal, osmCopy);
@@ -37,19 +35,18 @@ public class RoundTripTest extends TestCase {
 
         // Load OSM data from PBF
         OSM osmOriginal = new OSM(null);
-        osmOriginal.loadFromPBFFile(TEST_FILE);
+        osmOriginal.readFromFile(TEST_FILE);
         assertTrue(osmOriginal.nodes.size() > 1);
         assertTrue(osmOriginal.ways.size() > 1);
         assertTrue(osmOriginal.relations.size() > 1);
 
         // Write OSM data out to a PBF file
-        File ourPbfFile = File.createTempFile("test", "pbf");
-        OutputStream outputStream = new FileOutputStream(ourPbfFile);
-        osmOriginal.writePbf(outputStream);
+        File ourPbfFile = File.createTempFile("test", ".osm.pbf");
+        osmOriginal.writeToFile(ourPbfFile.getPath());
 
         // Read OSM data back in from VEX file
         OSM osmCopy = new OSM(null);
-        osmCopy.loadFromPBFFile(ourPbfFile.toString());
+        osmCopy.readFromFile(ourPbfFile.getPath());
 
         // Compare PBF data to VEX data
         compareOsm(osmOriginal, osmCopy);
@@ -69,8 +66,8 @@ public class RoundTripTest extends TestCase {
                     try {
                         OSMEntitySink vexSink = new VexOutput(outStream);
                         FileInputStream pbfFileInputStream = new FileInputStream(TEST_FILE);
-                        OSMEntitySource pbfSource = new PBFInput(pbfFileInputStream, vexSink);
-                        pbfSource.read();
+                        OSMEntitySource pbfSource = new PBFInput(pbfFileInputStream);
+                        pbfSource.copyTo(vexSink);
                     } catch (IOException ex) {
                         throw new RuntimeException(ex);
                     }
@@ -84,7 +81,7 @@ public class RoundTripTest extends TestCase {
 
         // Load up the original PBF file for comparison
         OSM osmOriginal = new OSM(null);
-        osmOriginal.loadFromPBFFile(TEST_FILE);
+        osmOriginal.readFromFile(TEST_FILE);
 
         // Compare PBF data to VEX stream
         compareOsm(osmOriginal, osmCopy);
