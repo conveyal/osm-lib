@@ -89,7 +89,9 @@ public abstract class OSMEntity implements Serializable {
     }
 
     public boolean tagsEqual (OSMEntity other) {
-        if (this.hasNoTags() && other.hasNoTags()) return true;
+        if (this.hasNoTags()) {
+            return other.hasNoTags();
+        }
         return this.tags.equals(other.tags);
     }
 
