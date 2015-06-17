@@ -118,11 +118,12 @@ public class VEXBlock {
         int pos = 0;
         // Do not compress an empty data block, it will spin forever trying to fill the zero-length output buffer.
         if (nBytes > 0) {
-            Deflater deflater = new Deflater(Deflater.DEFAULT_COMPRESSION, false); // include gzip header and checksum
+            Deflater deflater = new Deflater(Deflater.BEST_COMPRESSION, false); // include gzip header and checksum
             deflater.setInput(data, 0, nBytes);
             deflater.finish(); // There will be no more input after this byte array.
             while (!deflater.finished()) {
                 pos += deflater.deflate(output, pos, output.length - pos, Deflater.SYNC_FLUSH);
+                // FIXME use function from PBF output that detects no-shrink condition
             }
         }
         return pos;

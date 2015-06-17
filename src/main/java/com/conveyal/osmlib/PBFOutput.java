@@ -10,13 +10,14 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.io.OutputStream;
+import java.util.concurrent.SynchronousQueue;
 import java.util.zip.Deflater;
 
 /**
  * Consumes OSM entity objects and writes a stream of PBF data blocks to the specified output stream.
  * This is neither threadsafe nor reentrant! Create one instance of this encoder per encode operation.
  */
-public class PBFOutput implements OSMEntitySink {
+public class PBFOutput implements OSMEntitySink, Runnable {
 
     private static final Logger LOG = LoggerFactory.getLogger(PBFOutput.class);
 
@@ -39,6 +40,8 @@ public class PBFOutput implements OSMEntitySink {
 
     private Osmformat.DenseNodes.Builder denseNodesBuilder;
 
+    private Thread writerThread = null;
+
     /** Construct a new PBF output encoder which writes to the given downstream OutputStream. */
     public PBFOutput(OutputStream downstream) {
         this.downstream = downstream;
@@ -54,14 +57,20 @@ public class PBFOutput implements OSMEntitySink {
         }
     }
 
-    /* We always add one primitive group of less that 8k elements to each primitive block. */
+    /** We always add one primitive group of less that 8k elements to each primitive block. */
     private void endBlock () {
         if (nEntitiesInBlock > 0) {
             if (currEntityType == OSMEntity.Type.NODE) {
                 primitiveGroupBuilder.setDense(denseNodesBuilder);
             }
-            writeOneBlob(Osmformat.PrimitiveBlock.newBuilder()
-                    .setStringtable(stringTable.toBuilder()).addPrimitivegroup(primitiveGroupBuilder).build());
+            // Pass the block off to the compression/writing thread
+            try {
+                Osmformat.PrimitiveBlock primitiveBlock = Osmformat.PrimitiveBlock.newBuilder()
+                        .setStringtable(stringTable.toBuilder()).addPrimitivegroup(primitiveGroupBuilder).build();
+                synchronousQueue.put(primitiveBlock);
+            } catch (InterruptedException e) {
+                throw new RuntimeException(e);
+            }
         }
     }
 
@@ -126,7 +135,7 @@ public class PBFOutput implements OSMEntitySink {
         int pos = 0;
         // Do not compress an empty data block, it will spin forever trying to fill the zero-length output buffer.
         if (input.length > 0) {
-            Deflater deflater = new Deflater(Deflater.DEFAULT_COMPRESSION, false); // include gzip header and checksum
+            Deflater deflater = new Deflater(Deflater.BEST_COMPRESSION, false); // include gzip header and checksum
             deflater.setInput(input, 0, input.length);
             deflater.finish(); // There will be no more input after this byte array.
             while (!deflater.finished()) {
@@ -147,12 +156,22 @@ public class PBFOutput implements OSMEntitySink {
         Osmformat.HeaderBlock headerBlock = Osmformat.HeaderBlock.newBuilder().addRequiredFeatures("DenseNodes")
                 .setWritingprogram("Vanilla Extract").build();
         writeOneBlob(headerBlock);
+        // Start another thread that will handle compression and writing in parallel.
+        writerThread = new Thread(this);
+        writerThread.start();
     }
 
     @Override
     public void writeEnd() throws IOException {
-        endBlock(); // Finish any partially-completed block.
-        downstream.close();
+        // Finish any partially-completed block.
+        endBlock();
+        // Send a primitive block with no primitive group to the writer thread, signaling it to shut down and clean up.
+        try {
+            synchronousQueue.put(Osmformat.PrimitiveBlock.getDefaultInstance());
+            writerThread.join();
+        } catch (InterruptedException e) {
+            throw new RuntimeException(e);
+        }
         LOG.info("Finished writing PBF format.");
     }
 
@@ -252,6 +271,32 @@ public class PBFOutput implements OSMEntitySink {
         /* TODO Should we trigger the build here or just call with the builder? */
         primitiveGroupBuilder.addRelations(builder.build());
 
+    }
+
+    /** A zero-length BlockingQueue that hands tasks to the compression/writing thread. */
+    private final SynchronousQueue<Osmformat.PrimitiveBlock> synchronousQueue = new SynchronousQueue<>();
+
+    /** Runnable interface implementation that compresses and writes output blocks asynchronously. */
+    @Override
+    public void run() {
+        while (true) {
+            try {
+                Osmformat.PrimitiveBlock block = synchronousQueue.take(); // block until work is available
+                if (block.getPrimitivegroupCount() == 0) {
+                    break; // a block with no primitive groups tells the writer thread to shut down.
+                }
+                writeOneBlob(block);
+            } catch (InterruptedException ex) {
+                LOG.error("Block writer thread was interrupted while waiting for work.");
+                break;
+            }
+        }
+        try {
+            downstream.flush();
+            downstream.close();
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
     }
 
 }
