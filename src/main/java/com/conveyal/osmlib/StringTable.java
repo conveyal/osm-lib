@@ -1,9 +1,9 @@
 package com.conveyal.osmlib;
 
 import com.google.protobuf.ByteString;
-import crosby.binary.Osmformat;
 import gnu.trove.map.TObjectIntMap;
 import gnu.trove.map.hash.TObjectIntHashMap;
+import org.openstreetmap.osmosis.osmbinary.Osmformat;
 
 import java.util.ArrayList;
 import java.util.List;

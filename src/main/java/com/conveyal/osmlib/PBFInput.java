@@ -13,9 +13,9 @@ package com.conveyal.osmlib;
  */
 
 import com.conveyal.osmlib.OSMEntity.Type;
-import crosby.binary.BinaryParser;
-import crosby.binary.Osmformat;
-import crosby.binary.file.BlockInputStream;
+import org.openstreetmap.osmosis.osmbinary.BinaryParser;
+import org.openstreetmap.osmosis.osmbinary.Osmformat;
+import org.openstreetmap.osmosis.osmbinary.file.BlockInputStream;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

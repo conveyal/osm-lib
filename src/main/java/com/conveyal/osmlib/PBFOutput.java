@@ -3,8 +3,8 @@ package com.conveyal.osmlib;
 import com.google.common.primitives.Ints;
 import com.google.protobuf.ByteString;
 import com.google.protobuf.GeneratedMessageLite;
-import crosby.binary.Fileformat;
-import crosby.binary.Osmformat;
+import org.openstreetmap.osmosis.osmbinary.Fileformat;
+import org.openstreetmap.osmosis.osmbinary.Osmformat;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -121,6 +121,7 @@ public class PBFOutput implements OSMEntitySink {
         }
     }
 
+    // TODO reuse this function in both PBF and VEX output
     private int deflate (byte[] input, byte[] output) {
         int pos = 0;
         // Do not compress an empty data block, it will spin forever trying to fill the zero-length output buffer.
