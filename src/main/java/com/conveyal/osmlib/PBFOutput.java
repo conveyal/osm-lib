@@ -205,7 +205,7 @@ public class PBFOutput implements OSMEntitySink {
         /* Node References */
         long prevNodeRef = 0;
         for (long ref : way.nodes) {
-            builder.addRefs(ref - prevNodeRef);
+            builder.addRefs(ref - prevNodeRef); // delta-coded node references
             prevNodeRef = ref;
         }
 
@@ -230,8 +230,10 @@ public class PBFOutput implements OSMEntitySink {
         }
 
         /* Relation members */
+        long lastMemberId = 0;
         for (Relation.Member member : relation.members) {
-            builder.addMemids(member.id);
+            builder.addMemids(member.id - lastMemberId); // delta-coded member references
+            lastMemberId = member.id;
             builder.addRolesSid(stringTable.getCode(member.role));
             Osmformat.Relation.MemberType memberType;
             if (member.type == OSMEntity.Type.NODE) {
