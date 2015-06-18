@@ -1,10 +1,35 @@
 # osm-lib
-A library for random entity access inside OSM files of any size.
 
-## build
+A library for random entity access inside OSM files of any size, up to and including `planet.pbf`.
 
-$ mvn package
+## Build the JAR
 
-## run
+`$ mvn clean package`
 
-$ java -cp target/osm-lib-1.0-SNAPSHOT.jar com.conveyal.osmlib.App
+## Run Vanilla Extract
+
+`$ mvn exec:java -Dexec.mainClass="com.conveyal.osmlib.VanillaExtract" -Dexec.args=...`
+
+### Replicate the planet or a smaller region
+
+`VanillaExtract /mnt/ssd2/vexdata --loadURL http://ftp.snt.utwente.nl/pub/misc/openstreetmap/planet-latest.osm.pbf`
+
+`VanillaExtract vex.data --loadURL https://s3.amazonaws.com/metro-extracts.mapzen.com/aarhus_denmark.osm.pbf`
+
+`VanillaExtract /mnt/ssd2/vexdata --load /home/abyrd/france.osm.pbf`
+
+`VanillaExtract /mnt/ssd2/vexdata --load /home/abyrd/belgium.vex`
+
+### Run an extract server with minutely updates
+
+`VanillaExtract /mnt/ssd2/vexdata`
+
+## Fetch a geographic extract
+
+### Near Aarhus, Denmark as PBF
+
+`wget http://localhost:9001/56.12761,10.056558,56.179451,10.144608.pbf`
+
+### Near Aarhus, Denmark in VEX format
+
+`wget http://localhost:9001/56.12761,10.056558,56.179451,10.144608.vex`
