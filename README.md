@@ -12,6 +12,10 @@ A library for random entity access inside OSM files of any size, up to and inclu
 
 ### Replicate the planet or a smaller region
 
+You'll want to load from a PBF source that contains a timestamp if you want minutely updates. `Planet` mirrors,
+Mapzen Metro Extracts, and Geofabrik extracts contain timestamps. Watch for the timestamp to appear as the load
+process begins just to make sure it was properly read.
+
 `VanillaExtract /mnt/ssd2/vexdata --loadURL http://ftp.snt.utwente.nl/pub/misc/openstreetmap/planet-latest.osm.pbf`
 
 `VanillaExtract vex.data --loadURL https://s3.amazonaws.com/metro-extracts.mapzen.com/aarhus_denmark.osm.pbf`
