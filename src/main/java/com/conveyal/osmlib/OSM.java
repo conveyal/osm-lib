@@ -217,7 +217,7 @@ public class OSM implements OSMEntitySource, OSMEntitySink {
         // We could also insert using ((float)lat, (float)lon) as a key
         // but depending on whether MapDB does tree path compression this might take more space
         WebMercatorTile tile = tileForWay(wayId, way);
-        if (way == null) {
+        if (tile == null) {
             LOG.debug("Attempted insert way {} into the spatial index, but it is not currently in the database.", wayId);
         } else {
             this.index.add(new Tuple3(tile.xtile, tile.ytile, wayId));
