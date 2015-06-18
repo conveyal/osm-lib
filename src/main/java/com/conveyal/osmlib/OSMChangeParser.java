@@ -111,6 +111,7 @@ public class OSMChangeParser extends DefaultHandler {
         if (!waysModified.isEmpty()) {
             LOG.debug("Indexing modified ways...");
             for (int w = 0; w < waysModified.size(); w++) {
+                // TODO unless we are doing snapshots and transactions, we should unindex after indexing the new one?
                 osm.unIndexWay(id);
                 osm.indexWay(waysModified.get(w), null);
             }
