@@ -39,6 +39,11 @@ public class TextOutput implements OSMEntitySink {
     }
 
     @Override
+    public void setReplicationTimestamp(long secondsSinceEpoch) {
+        // TODO IMPLEMENT
+    }
+
+    @Override
     public void writeNode(long nodeId, Node node) {
         printStream.print("N ");
         printStream.print(nodeId);

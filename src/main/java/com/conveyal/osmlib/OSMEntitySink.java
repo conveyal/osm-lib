@@ -15,6 +15,8 @@ public interface OSMEntitySink {
 
     public void writeBegin() throws IOException;
 
+    public void setReplicationTimestamp(long secondsSinceEpoch); // Needs to be called before any entities are written
+
     public void writeNode(long id, Node node) throws IOException; // TODO rename id parameters to nodeId, wayId, relationId throughout
 
     public void writeWay(long id, Way way) throws IOException;
@@ -26,17 +28,21 @@ public interface OSMEntitySink {
     public static OSMEntitySink forFile (String path) {
         try {
             OutputStream outputStream = new FileOutputStream(path);
-            if (path.endsWith(".pbf")) {
-                return new PBFOutput(outputStream);
-            } else if (path.endsWith(".vex")) {
-                return new VexOutput(outputStream);
-            } else if (path.endsWith(".txt")) {
-                return new TextOutput(outputStream);
-            } else {
-                return null;
-            }
+            return forStream(path, outputStream);
         } catch (FileNotFoundException e) {
             throw new RuntimeException(e);
+        }
+    }
+
+    public static OSMEntitySink forStream (String name, OutputStream outputStream) {
+        if (name.endsWith(".pbf")) {
+            return new PBFOutput(outputStream);
+        } else if (name.endsWith(".vex")) {
+            return new VexOutput(outputStream);
+        } else if (name.endsWith(".txt")) {
+            return new TextOutput(outputStream);
+        } else {
+            return null;
         }
     }
 

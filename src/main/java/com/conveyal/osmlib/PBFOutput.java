@@ -166,6 +166,11 @@ public class PBFOutput implements OSMEntitySink, Runnable {
     }
 
     @Override
+    public void setReplicationTimestamp(long secondsSinceEpoch) {
+        // TODO IMPLEMENT
+    }
+
+    @Override
     public void writeEnd() throws IOException {
         // Finish any partially-completed block.
         endBlock();

@@ -117,7 +117,7 @@ class Surface extends JPanel implements ActionListener, MouseListener, MouseWhee
     public void drawOsm (Graphics2D g2d) {
         try {
             LOG.info("world window coordinates: {}", wgsWindow);
-            String urlString = String.format("http://localhost:9001/%f,%f,%f,%f",
+            String urlString = String.format("http://localhost:9001/%f,%f,%f,%f.vex",
                     wgsWindow.getMinY(),wgsWindow.getMinX(),wgsWindow.getMaxY(),wgsWindow.getMaxX());
             URL url = new URL(urlString);
             InputStream vexStream = url.openStream();

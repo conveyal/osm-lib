@@ -8,6 +8,8 @@ import com.conveyal.osmlib.Way;
 import java.awt.*;
 import java.awt.geom.Line2D;
 import java.io.IOException;
+import java.time.Instant;
+import java.time.ZoneId;
 
 /**
  *
@@ -23,6 +25,11 @@ public class GraphicsSink implements OSMEntitySink {
     @Override
     public void writeBegin() throws IOException {
 
+    }
+
+    @Override
+    public void setReplicationTimestamp(long secondsSinceEpoch) {
+        g2d.drawString(Instant.ofEpochSecond(secondsSinceEpoch).atZone(ZoneId.systemDefault()).toString(), 0, 0);
     }
 
     @Override

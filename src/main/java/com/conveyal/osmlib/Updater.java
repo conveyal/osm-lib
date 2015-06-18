@@ -13,10 +13,9 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.net.URL;
 import java.text.SimpleDateFormat;
+import java.time.Instant;
 import java.util.ArrayList;
-import java.util.Calendar;
 import java.util.Date;
-import java.util.GregorianCalendar;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
@@ -33,18 +32,16 @@ public class Updater implements Runnable {
 
     public static final String BASE_URL = "http://planet.openstreetmap.org/replication/";
 
-    OSM osm;
+    private static final Instant MIN_REPLICATION_INSTANT = Instant.parse("2015-05-01T00:00:00.00Z");
 
-    long dbTimestamp;
+    private static final Instant MAX_REPLICATION_INSTANT = Instant.parse("2100-02-01T00:00:00.00Z");
+
+    OSM osm;
 
     DiffState lastApplied;
 
     public Updater(OSM osm) {
         this.osm = osm;
-        GregorianCalendar cal = new GregorianCalendar();
-        //cal.add(Calendar.DAY_OF_MONTH, -2);
-        cal.add(Calendar.HOUR, -5);
-        dbTimestamp = cal.getTimeInMillis() / 1000;
     }
 
     public static enum Timescale {
@@ -126,11 +123,11 @@ public class Updater implements Runnable {
         List<DiffState> workQueue = new ArrayList<DiffState>();
         DiffState latest = fetchState(timescale, 0);
         // Only check specific updates if the overall state for this timescale implies there are new ones.
-        if (latest.timestamp > dbTimestamp) {
+        if (latest.timestamp > osm.timestamp.get()) {
             // Working backward, find all updates that are dated after the current database timestamp.
             for (int seq = latest.sequenceNumber; seq > 0; seq--) {
                 DiffState diff = fetchState(timescale, seq);
-                if (diff.timestamp <= dbTimestamp) break;
+                if (diff.timestamp <= osm.timestamp.get()) break;
                 workQueue.add(diff);
             }
         }
@@ -150,7 +147,7 @@ public class Updater implements Runnable {
                 InputStream inputStream = new GZIPInputStream(state.url.openStream());
                 saxParser.parse(inputStream, handler);
                 // Move the DB timestamp forward to that of the update that was applied
-                dbTimestamp = state.timestamp;
+                osm.timestamp.set(state.timestamp);
                 // Record the last update applied so we can jump straight to the next one
                 lastApplied = state;
             }
@@ -167,7 +164,13 @@ public class Updater implements Runnable {
      */
     public static Thread spawnUpdateThread(OSM osm) {
         Thread updateThread = new Thread(new Updater(osm));
-        updateThread.start();
+        Instant initialTimestamp = Instant.ofEpochSecond(osm.timestamp.get());
+        if (initialTimestamp.isBefore(MIN_REPLICATION_INSTANT) || initialTimestamp.isAfter(MAX_REPLICATION_INSTANT)) {
+            LOG.error("OSM database timestamp seems incorrect: {}", initialTimestamp.toString());
+            LOG.error("Not running the minutely updater thread.");
+        } else {
+            updateThread.start();
+        }
         return updateThread;
     }
 
@@ -175,17 +178,17 @@ public class Updater implements Runnable {
         spawnUpdateThread(new OSM(null));
     }
 
-    /** Run the updater, generally in another thread. */
+    /** Run the updater, usually in another thread. */
     @Override
     public void run() {
         while (true) {
             // long timestamp = osm.db.getAtomicLong("timestamp").get(); // UTC
             // If more than one year ago, complain. If more than a few minutes in the future, complain.
             long now = System.currentTimeMillis() / 1000;
-            if ((now - dbTimestamp) > 60 * 60 * 24) {
+            if ((now - osm.timestamp.get()) > 60 * 60 * 24) {
                 applyDiffs(findDiffs("day"));
             }
-            if ((now - dbTimestamp) > 60 * 60) {
+            if ((now - osm.timestamp.get()) > 60 * 60) {
                 applyDiffs(findDiffs("hour"));
             }
             applyDiffs(findDiffs("minute"));
@@ -202,7 +205,8 @@ public class Updater implements Runnable {
                 try {
                     Thread.sleep(sleepSeconds * 1000);
                 } catch (InterruptedException e) {
-                    LOG.warn("Thread interrupted, polling loop should continue.");
+                    LOG.info("Thread interrupted, exiting polling loop.");
+                    break;
                 }
             }
         }

@@ -2,6 +2,7 @@ package com.conveyal.osmlib;
 
 import com.conveyal.osmlib.serializer.NodeSerializer;
 import com.conveyal.osmlib.serializer.WaySerializer;
+import org.mapdb.Atomic;
 import org.mapdb.BTreeKeySerializer;
 import org.mapdb.DB;
 import org.mapdb.DBMaker;
@@ -9,7 +10,10 @@ import org.mapdb.Fun.Tuple3;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.*;
+import java.io.File;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
 import java.util.Map;
 import java.util.NavigableSet;
 
@@ -40,6 +44,12 @@ public class OSM implements OSMEntitySource, OSMEntitySink {
 
     /** The MapDB backing this OSM, if any. */
     DB db = null;
+
+    /** The timestamp in seconds since the Epoch of the last replication update applied. */
+    Atomic.Long timestamp;
+
+    /** The sequence number of the last replication patch applied. */
+    Atomic.Long sequenceNumber;
 
     /* If true, insert all incoming ways in the index table. */
     public boolean tileIndexing = false;
@@ -107,7 +117,9 @@ public class OSM implements OSMEntitySource, OSMEntitySink {
                 .serializer(BTreeKeySerializer.TUPLE3) 
                 .makeOrGet();
 
-        db.createAtomicLong("timestamp", 0);
+        // GetAtomicLong() will create the atomic long entry if it doesn't exist
+        timestamp = db.getAtomicLong("timestamp");
+        sequenceNumber = db.getAtomicLong("sequence_number");
 
     }
 
@@ -119,6 +131,16 @@ public class OSM implements OSMEntitySource, OSMEntitySink {
             source.copyTo(this);
         } catch (Exception ex) {
             throw new RuntimeException("Error occurred while parsing OSM file " + filePath, ex);
+        }
+    }
+
+    public void readFromUrl(String urlString) {
+        try {
+            LOG.info("Reading OSM from URL '{}'.", urlString);
+            OSMEntitySource source = OSMEntitySource.forUrl(urlString);
+            source.copyTo(this);
+        } catch (Exception ex) {
+            throw new RuntimeException("Error occurred while parsing OSM from URL " + urlString, ex);
         }
     }
 
@@ -231,6 +253,12 @@ public class OSM implements OSMEntitySource, OSMEntitySink {
     @Override
     public void writeBegin() throws IOException {
         // Do nothing. Could initialize database here.
+    }
+
+    @Override
+    public void setReplicationTimestamp(long secondsSinceEpoch) {
+        // TODO handle the case where multiple files are loaded (oldest timestamp should be used)
+        timestamp.set(secondsSinceEpoch);
     }
 
     @Override

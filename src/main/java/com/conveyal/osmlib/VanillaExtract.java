@@ -31,13 +31,22 @@ public class VanillaExtract {
 
     private static final String BIND_ADDRESS = "0.0.0.0";
 
-    /** VanillaExtract /path/to/storageFile inputFile.pbf */
+    private static final String USAGE =
+            "VanillaExtract /path/to/storageFile load inputFile.[pbf|vex] \n";
+
     public static void main(String[] args) {
 
         OSM osm = new OSM(args[0]);
-        osm.intersectionDetection = true;
-        osm.tileIndexing = true;
-        osm.readFromFile(args[1]);
+
+        if (args[1].startsWith("--load")) {
+            osm.intersectionDetection = true;
+            osm.tileIndexing = true;
+            if (args[1].equalsIgnoreCase("--loadurl")) {
+                osm.readFromUrl(args[2]);
+            } else {
+                osm.readFromFile(args[2]);
+            }
+        }
 
         Thread updateThread = Updater.spawnUpdateThread(osm);
 
@@ -51,6 +60,7 @@ public class VanillaExtract {
             httpServer.start();
             LOG.info("VEX server running.");
             Thread.currentThread().join();
+            updateThread.interrupt();
         } catch (BindException be) {
             LOG.error("Cannot bind to port {}. Is it already in use?", PORT);
         } catch (IOException ioe) {
@@ -89,11 +99,13 @@ public class VanillaExtract {
         @Override
         public void service(Request request, Response response) throws Exception {
 
+            response.setContentType("application/osm");
             String uri = request.getDecodedRequestURI();
-            response.setContentType("application/gzip");
+            int suffixIndex = uri.lastIndexOf('.');
+            String fileType = uri.substring(suffixIndex);
             OutputStream outStream = response.getOutputStream();
             try {
-                String[] coords = uri.split("/")[1].split("[,;]");
+                String[] coords = uri.substring(1, suffixIndex).split("[,;]");
                 double minLat = Double.parseDouble(coords[0]);
                 double minLon = Double.parseDouble(coords[1]);
                 double maxLat = Double.parseDouble(coords[2]);
@@ -109,14 +121,14 @@ public class VanillaExtract {
                 /* TODO filter out buildings on the server side. */
                 boolean buildings = coords.length > 4 && "buildings".equalsIgnoreCase(coords[4]);
 
-                OSMEntitySink vexOutput = new VexOutput(outStream);
+                OSMEntitySink sink = OSMEntitySink.forStream(uri, outStream);
                 TileOSMSource tileSource = new TileOSMSource(osm);
                 tileSource.setBoundingBox(minLat, minLon, maxLat, maxLon);
-                tileSource.copyTo(vexOutput);
+                tileSource.copyTo(sink);
                 response.setStatus(HttpStatus.OK_200);
             } catch (Exception ex) {
                 response.setStatus(HttpStatus.BAD_REQUEST_400);
-                outStream.write("URI format: /min_lat,min_lon,max_lat,max_lon (all in decimal degrees)\n".getBytes());
+                outStream.write("URI format: /min_lat,min_lon,max_lat,max_lon[.pbf|.vex] (all coords in decimal degrees)\n".getBytes());
                 ex.printStackTrace();
             } finally {
                 outStream.close();

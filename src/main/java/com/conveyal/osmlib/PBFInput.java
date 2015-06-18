@@ -21,6 +21,7 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.time.Instant;
 import java.util.List;
 
 /**
@@ -204,6 +205,13 @@ public class PBFInput extends BinaryParser implements OSMEntitySource {
                 continue; // We can parse this.
             }
             throw new IllegalStateException("File requires unknown feature: " + s);
+        }
+        if (block.hasOsmosisReplicationTimestamp()) {
+            long timestamp = block.getOsmosisReplicationTimestamp();
+            LOG.info("PBF file has a replication timestamp of {}", Instant.ofEpochSecond(timestamp));
+            entitySink.setReplicationTimestamp(timestamp);
+        } else {
+            LOG.info("PBF file has no replication timestamp.");
         }
     }
 

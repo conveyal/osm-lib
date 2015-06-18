@@ -115,6 +115,11 @@ public class VexOutput implements OSMEntitySink {
     }
 
     @Override
+    public void setReplicationTimestamp(long secondsSinceEpoch) {
+        // TODO IMPLEMENT
+    }
+
+    @Override
     public void writeEnd() throws IOException {
         blockWriter.endBlock(); // Finish any partially-completed block.
         blockWriter.close(); // Let writing thread complete then close downstream OutputStream.
