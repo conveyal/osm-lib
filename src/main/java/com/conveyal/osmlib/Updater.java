@@ -24,7 +24,11 @@ import java.util.TimeZone;
 import java.util.zip.GZIPInputStream;
 
 /**
+ * Concurrency issues:
+ * "MapDB should be thread safe within single JVM. So any number of parallel threads is allowed.
+ * It supports parallel writes."
  *
+ * However we may eventually want to apply updates in transactions.
  */
 public class Updater implements Runnable {
 
@@ -38,7 +42,7 @@ public class Updater implements Runnable {
 
     OSM osm;
 
-    DiffState lastApplied;
+    Diff lastApplied;
 
     public Updater(OSM osm) {
         this.osm = osm;
@@ -51,8 +55,7 @@ public class Updater implements Runnable {
         }
     }
 
-    /** Rename to just diff, represents one diff. */
-    public static class DiffState {
+    public static class Diff {
         URL url;
         String timescale;
         int sequenceNumber;
@@ -67,8 +70,8 @@ public class Updater implements Runnable {
         }
     }
 
-    public DiffState fetchState(String timescale, int sequenceNumber) {
-        DiffState diffState = new DiffState();
+    public Diff fetchState(String timescale, int sequenceNumber) {
+        Diff diffState = new Diff();
         try {
             StringBuilder sb = new StringBuilder(BASE_URL);
             sb.append(timescale);
@@ -119,14 +122,14 @@ public class Updater implements Runnable {
      * @return a chronologically ordered list of all diffs at the given timescale with a timestamp after
      * the database timestamp.
      */
-    public List<DiffState> findDiffs (String timescale) {
-        List<DiffState> workQueue = new ArrayList<DiffState>();
-        DiffState latest = fetchState(timescale, 0);
+    public List<Diff> findDiffs (String timescale) {
+        List<Diff> workQueue = new ArrayList<Diff>();
+        Diff latest = fetchState(timescale, 0);
         // Only check specific updates if the overall state for this timescale implies there are new ones.
         if (latest.timestamp > osm.timestamp.get()) {
             // Working backward, find all updates that are dated after the current database timestamp.
             for (int seq = latest.sequenceNumber; seq > 0; seq--) {
-                DiffState diff = fetchState(timescale, seq);
+                Diff diff = fetchState(timescale, seq);
                 if (diff.timestamp <= osm.timestamp.get()) break;
                 workQueue.add(diff);
             }
@@ -136,13 +139,13 @@ public class Updater implements Runnable {
         return Lists.reverse(workQueue);
     }
 
-    public void applyDiffs(List<DiffState> workQueue) {
+    public void applyDiffs(List<Diff> workQueue) {
         try {
             SAXParserFactory factory = SAXParserFactory.newInstance();
             factory.setNamespaceAware(true);
             SAXParser saxParser = factory.newSAXParser();
             DefaultHandler handler = new OSMChangeParser(osm);
-            for (DiffState state : workQueue) {
+            for (Diff state : workQueue) {
                 LOG.info("Applying {} update for {}", state.timescale, getDateString(state.timestamp * 1000));
                 InputStream inputStream = new GZIPInputStream(state.url.openStream());
                 saxParser.parse(inputStream, handler);
