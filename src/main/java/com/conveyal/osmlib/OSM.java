@@ -189,6 +189,7 @@ public class OSM implements OSMEntitySource, OSMEntitySink {
     /** Write the contents of this OSM MapDB out to an OSM entity sink (from OSMEntitySource interface). */
     @Override
     public void copyTo (OSMEntitySink sink) throws IOException {
+        sink.setReplicationTimestamp(timestamp.get());
         sink.writeBegin();
         if (timestamp.get() > 0) {
             sink.setReplicationTimestamp(timestamp.get());

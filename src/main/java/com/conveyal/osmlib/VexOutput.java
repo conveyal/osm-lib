@@ -30,6 +30,9 @@ public class VexOutput implements OSMEntitySink {
     /** The entity type of the current block to enforce grouping of entities by type. */
     private int currEntityType = VexFormat.VEX_NONE;
 
+    /** The replication timestamp to apply to the output. */
+    private long timestamp;
+
     /** Construct a new VEX output encoder which writes to the given downstream OutputStream. */
     public VexOutput(OutputStream downstream) {
         this.downstream = downstream;
@@ -116,7 +119,7 @@ public class VexOutput implements OSMEntitySink {
 
     @Override
     public void setReplicationTimestamp(long secondsSinceEpoch) {
-        // TODO IMPLEMENT
+        this.timestamp = secondsSinceEpoch;
     }
 
     @Override
