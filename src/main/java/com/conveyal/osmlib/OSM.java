@@ -186,10 +186,13 @@ public class OSM implements OSMEntitySource, OSMEntitySink {
         this.copyTo(sink);
     }
 
-    /** Write the contents of this OSM MapDB out to an OSM entity sink (implements OSMEntitySource). */
+    /** Write the contents of this OSM MapDB out to an OSM entity sink (from OSMEntitySource interface). */
     @Override
     public void copyTo (OSMEntitySink sink) throws IOException {
         sink.writeBegin();
+        if (timestamp.get() > 0) {
+            sink.setReplicationTimestamp(timestamp.get());
+        }
         for (Map.Entry<Long, Node> nodeEntry : this.nodes.entrySet()) {
             sink.writeNode(nodeEntry.getKey(), nodeEntry.getValue());
         }
@@ -253,6 +256,9 @@ public class OSM implements OSMEntitySource, OSMEntitySink {
     @Override
     public void writeBegin() throws IOException {
         // Do nothing. Could initialize database here.
+        if ( ! (nodes.isEmpty() && ways.isEmpty() && relations.isEmpty())) {
+            throw new RuntimeException("Database is already populated.");
+        }
     }
 
     @Override

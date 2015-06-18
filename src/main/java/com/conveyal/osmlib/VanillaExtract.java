@@ -38,7 +38,7 @@ public class VanillaExtract {
 
         OSM osm = new OSM(args[0]);
 
-        if (args[1].startsWith("--load")) {
+        if (args.length > 1 && args[1].startsWith("--load")) {
             osm.intersectionDetection = true;
             osm.tileIndexing = true;
             if (args[1].equalsIgnoreCase("--loadurl")) {
@@ -46,6 +46,8 @@ public class VanillaExtract {
             } else {
                 osm.readFromFile(args[2]);
             }
+            LOG.info("Done populating OSM database.");
+            return;
         }
 
         Thread updateThread = Updater.spawnUpdateThread(osm);
