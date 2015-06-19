@@ -24,6 +24,10 @@ process begins just to make sure it was properly read.
 
 `VanillaExtract /mnt/ssd2/vexdata --load /home/abyrd/belgium.vex`
 
+### Load planet from an FTP server in the background
+
+`$ nohup time mvn exec:java -Dexec.mainClass="com.conveyal.osmlib.VanillaExtract" -Dexec.args="/mnt/ssd2/vexdata --loadURL ftp://ftp.spline.de/pub/openstreetmap/pbf/planet-latest.osm.pbf" &`
+
 ### Run an extract server with minutely updates
 
 `VanillaExtract /mnt/ssd2/vexdata`
