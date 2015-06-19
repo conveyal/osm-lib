@@ -307,4 +307,9 @@ public class OSM implements OSMEntitySource, OSMEntitySink {
         // Do nothing.
     }
 
+    /** Close the database file to ensure clean shutdown and avoid leaving the async write thread running. */
+    public void close() {
+        db.close();
+    }
+
 }

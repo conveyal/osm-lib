@@ -31,8 +31,7 @@ public class VanillaExtract {
 
     private static final String BIND_ADDRESS = "0.0.0.0";
 
-    private static final String USAGE =
-            "VanillaExtract /path/to/storageFile load inputFile.[pbf|vex] \n";
+    private static final String USAGE = "";
 
     public static void main(String[] args) {
 
@@ -46,7 +45,9 @@ public class VanillaExtract {
             } else {
                 osm.readFromFile(args[2]);
             }
+            // TODO catch writing exceptions here and shut down properly, closing OSM database.
             LOG.info("Done populating OSM database.");
+            osm.close();
             return;
         }
 
