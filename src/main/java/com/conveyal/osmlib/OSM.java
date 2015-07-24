@@ -40,7 +40,7 @@ public class OSM implements OSMEntitySource, OSMEntitySink {
     NodeTracker referencedNodes = new NodeTracker();
 
     /** The nodes which are referenced more than once by ways in this OSM. */
-    NodeTracker intersectionNodes = new NodeTracker();
+    public NodeTracker intersectionNodes = new NodeTracker();
 
     /** The MapDB backing this OSM, if any. */
     DB db = null;
