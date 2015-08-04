@@ -87,11 +87,11 @@
     	<artifactId>mapdb</artifactId>
     	<version>1.0.6</version>
     </dependency>
-    <!-- Logging library -->
+    <!-- Logging API (no implementation, this is a library) -->
     <dependency>
-      <groupId>ch.qos.logback</groupId>
-      <artifactId>logback-classic</artifactId>
-      <version>1.0.13</version>
+      <groupId>org.slf4j</groupId>
+      <artifactId>slf4j-api</artifactId>
+      <version>1.7.12</version>
     </dependency>
     <!-- OSM PBF format support -->
     <dependency>
