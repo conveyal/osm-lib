@@ -2,6 +2,8 @@
 
 A library for random entity access inside OSM files of any size, up to and including `planet.pbf`.
 
+[![Build Status](https://travis-ci.org/conveyal/osm-lib.svg?branch=master)](https://travis-ci.org/conveyal/osm-lib)
+
 ## Build the JAR
 
 `$ mvn clean package`
