@@ -1,0 +1,31 @@
+language: java
+
+# Travis doesn't (yet) support OpenJDK 8
+jdk:
+  - oraclejdk8
+
+# Replace Travis's default Maven installation step with a no-op.
+# This avoids redundantly pre-running 'mvn install -DskipTests' every time.
+install: true
+
+# Replace Travis's default build step.
+# Run all Maven phases at once up through verify, install, and deploy.
+script: mvn clean deploy
+
+env:
+  global:
+    # encrypted AWS access/secret keys to allow automated deployment to the Conveyal Maven repo on S3
+    - secure: "hCLC9L5ZIL6LyK96zefZOiY8Y35q1JX43z7uHRbh8Fx9Ru7KFRCQDgKZQsiko/JeAP8vMheeZpf/RIgeknKGkrIE5kmuEz3z55mGcgrgvpMgKvgKTdpQE/IcyAmBqssZweFzopVA9SGm8euRz3tJRJt66wz8lA5fSyRL6SQuZdc="
+    - secure: "as8h+4hMwPbcP/9Bpa/l20NFVXjKm2SAWFa3KmfNA60OXXTpqooEAN2jNxqvWzKXbaiL/iAfE/8DV0m0jikn38r8gDBbQlMVlEo0CXCKUbG1T6Wv9YgnP9qbA0OG8HZ3rYDAOtSgjFh9PN/FIEfY82AR/CdSvNN/Jt2ZLtR1wcE="
+
+# If sudo is disabled, CI runs on container based infrastructure (allows caching &c.)
+sudo: false
+
+# Retain the local Maven repository to speed up builds.
+cache:
+  directories:
+    - "$HOME/.m2/repository"
+
+# Notify us of the build status on the Slack channel     
+notifications:
+  slack: conveyal:Qxs2FvCTSQwygqnBTGbbN5hZ
