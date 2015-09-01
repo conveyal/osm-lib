@@ -24,6 +24,9 @@ public class PBFOutput implements OSMEntitySink, Runnable {
     /** The underlying output stream where VEX data will be written. */
     private OutputStream downstream;
 
+    /** The replication timestamp to record in the PBF file. Should be set before writing begins. */
+    private long timestamp;
+
     /** Values retained from one entity to the next within a block for delta decoding. */
     private long prevId, prevFixedLat, prevFixedLon;
 
@@ -156,18 +159,26 @@ public class PBFOutput implements OSMEntitySink, Runnable {
 
     @Override
     public void writeBegin() throws IOException {
+
         LOG.info("Writing PBF format...");
-        Osmformat.HeaderBlock headerBlock = Osmformat.HeaderBlock.newBuilder().addRequiredFeatures("DenseNodes")
-                .setWritingprogram("Vanilla Extract").build();
-        writeOneBlob(headerBlock);
+
+        // Write out a header block
+        Osmformat.HeaderBlock.Builder builder = Osmformat.HeaderBlock.newBuilder();
+        builder.addRequiredFeatures("DenseNodes").setWritingprogram("Vanilla Extract").build();
+        if (timestamp > 0) {
+            builder.setOsmosisReplicationTimestamp(timestamp);
+        }
+        writeOneBlob(builder.build());
+
         // Start another thread that will handle compression and writing in parallel.
         writerThread = new Thread(this);
         writerThread.start();
+
     }
 
     @Override
     public void setReplicationTimestamp(long secondsSinceEpoch) {
-        // TODO IMPLEMENT
+        this.timestamp = secondsSinceEpoch;
     }
 
     @Override

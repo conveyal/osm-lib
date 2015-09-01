@@ -197,8 +197,11 @@ public class Updater implements Runnable {
             applyDiffs(findDiffs("minute"));
             // Attempt to lock polling phase to server updates
             // TODO use time that file actually appeared rather than database timestamp
-            int phaseErrorSeconds = (int) (((System.currentTimeMillis() / 1000) - lastApplied.timestamp) % 60);
-            phaseErrorSeconds -= 5; // adjust for expected database export latency
+            int phaseErrorSeconds = 0;
+            if (lastApplied != null) {
+                phaseErrorSeconds = (int) (((System.currentTimeMillis() / 1000) - lastApplied.timestamp) % 60);
+                phaseErrorSeconds -= 5; // adjust for expected database export latency
+            }
             if (Math.abs(phaseErrorSeconds) > 1) {
                 LOG.info("Compensating for polling phase error of {} seconds", phaseErrorSeconds);
             }

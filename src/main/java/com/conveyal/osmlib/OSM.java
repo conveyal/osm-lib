@@ -40,7 +40,7 @@ public class OSM implements OSMEntitySource, OSMEntitySink {
     NodeTracker referencedNodes = new NodeTracker();
 
     /** The nodes which are referenced more than once by ways in this OSM. */
-    NodeTracker intersectionNodes = new NodeTracker();
+    public NodeTracker intersectionNodes = new NodeTracker();
 
     /** The MapDB backing this OSM, if any. */
     DB db = null;
@@ -189,6 +189,7 @@ public class OSM implements OSMEntitySource, OSMEntitySink {
     /** Write the contents of this OSM MapDB out to an OSM entity sink (from OSMEntitySource interface). */
     @Override
     public void copyTo (OSMEntitySink sink) throws IOException {
+        sink.setReplicationTimestamp(timestamp.get());
         sink.writeBegin();
         if (timestamp.get() > 0) {
             sink.setReplicationTimestamp(timestamp.get());
@@ -216,7 +217,7 @@ public class OSM implements OSMEntitySource, OSMEntitySink {
         // We could also insert using ((float)lat, (float)lon) as a key
         // but depending on whether MapDB does tree path compression this might take more space
         WebMercatorTile tile = tileForWay(wayId, way);
-        if (way == null) {
+        if (tile == null) {
             LOG.debug("Attempted insert way {} into the spatial index, but it is not currently in the database.", wayId);
         } else {
             this.index.add(new Tuple3(tile.xtile, tile.ytile, wayId));
@@ -304,6 +305,11 @@ public class OSM implements OSMEntitySource, OSMEntitySink {
     @Override
     public void writeEnd() throws IOException {
         // Do nothing.
+    }
+
+    /** Close the database file to ensure clean shutdown and avoid leaving the async write thread running. */
+    public void close() {
+        db.close();
     }
 
 }

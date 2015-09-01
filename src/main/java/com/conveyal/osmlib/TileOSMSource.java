@@ -61,6 +61,10 @@ public class TileOSMSource implements OSMEntitySource {
                     for (Tuple3<Integer, Integer, Long> item : xSubset) {
                         long wayId = item.c;
                         Way way = osm.ways.get(wayId);
+                        if (way == null) {
+                            LOG.error("Way {} is not available.", wayId);
+                            continue;
+                        }
                         if (pass == 0) { // Nodes
                             for (long nodeId : way.nodes) {
                                 if (nodesSeen.contains(nodeId)) continue;

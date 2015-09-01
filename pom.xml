@@ -87,7 +87,7 @@
     	<artifactId>mapdb</artifactId>
     	<version>1.0.6</version>
     </dependency>
-    <!-- Logging library -->
+    <!-- Logging API (no implementation, this is a library) -->
     <dependency>
       <groupId>org.slf4j</groupId>
       <artifactId>slf4j-api</artifactId>
