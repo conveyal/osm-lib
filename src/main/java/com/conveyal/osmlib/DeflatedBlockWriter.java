@@ -28,7 +28,7 @@ public class DeflatedBlockWriter extends OutputStream implements Runnable {
      * The maximum expected size of an encoded but uncompressed entity.
      * A block will be considered finished when it is within this distance of the maximum block size.
      */
-    public static final int MAX_MESSAGE_SIZE = 1024 * 16;
+    public static final int MAX_MESSAGE_SIZE = 1024 * 64;
 
     /** A zero-length BlockingQueue that hands tasks to the compression/writing pipeline stage without buffering them. */
     private final SynchronousQueue<VEXBlock> synchronousQueue = new SynchronousQueue<>();
@@ -58,7 +58,7 @@ public class DeflatedBlockWriter extends OutputStream implements Runnable {
     }
 
     /**
-     * Hand off a block for writing. Handing off a block with element type NONE signals the end of ourput, and
+     * Hand off a block for writing. Handing off a block with element type NONE signals the end of output, and
      * will shut down the writer thread.
      */
     private void handOff(VEXBlock vexBlock) {
