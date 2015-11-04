@@ -8,7 +8,7 @@ import java.io.DataOutput;
 import java.io.IOException;
 import java.io.Serializable;
 
-public class NodeSerializer implements Serializer<Node>, Serializable {
+public class NodeSerializer extends Serializer<Node> implements Serializable {
 
     @Override
     public void serialize(DataOutput out, Node node) throws IOException {
@@ -26,9 +26,5 @@ public class NodeSerializer implements Serializer<Node>, Serializable {
         return node;
     }
 
-    @Override
-    public int fixedSize() {
-        return -1;
-    }
     
 }

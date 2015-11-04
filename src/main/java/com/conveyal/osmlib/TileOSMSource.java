@@ -1,12 +1,11 @@
 package com.conveyal.osmlib;
 
-import org.mapdb.Fun;
-import org.mapdb.Fun.Tuple3;
+import org.mapdb.DataIO;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
-import java.util.NavigableSet;
+import java.util.Set;
 
 /** An OSM source that pulls web Mercator tiles out of a disk-backed OSM store. */
 public class TileOSMSource implements OSMEntitySource {
@@ -53,13 +52,19 @@ public class TileOSMSource implements OSMEntitySource {
                     // Therefore we must vary one of the dimensions "manually". Consider a set containing all the
                     // integers from 00 to 99 at 2-tuples. The range from (1,1) to (2,2) does not contain the four
                     // elements (1,1) (1,2) (2,1) (2,2). It contains the elements (1,1) (1,2) (1,3) (1,4) ... (2,2).
-                    @SuppressWarnings("unchecked")
-                    NavigableSet<Tuple3<Integer, Integer, Long>> xSubset = osm.index.subSet(
-                            new Tuple3(x, minY, null), true, // inclusive lower bound, null tests lower than anything
-                            new Tuple3(x, maxY, Fun.HI), true  // inclusive upper bound, HI tests higher than anything
+//                    @SuppressWarnings("unchecked")
+//                    NavigableSet<Tuple3<Integer, Integer, Long>> xSubset = osm.index.subSet(
+//                            new Tuple3(x, minY, null), true, // inclusive lower bound, null tests lower than anything
+//                            new Tuple3(x, maxY, Fun.HI), true  // inclusive upper bound, HI tests higher than anything
+//                    );
+
+                    //TODO this can be even more speedup by using iterator, and cutting iteration when maxY is too high
+                    Set<byte[]> xSubset = osm.index.subSet(
+                            OSM.indexMake(x, minY,0),   //inclusive lower bound, 0 is minimal LONG value
+                            OSM.indexMake(x, maxY+1, 0) //exclusive upper bound, increase maxY by one
                     );
-                    for (Tuple3<Integer, Integer, Long> item : xSubset) {
-                        long wayId = item.c;
+                    for (byte[] item : xSubset) {
+                        long wayId = DataIO.getLong(item,8);
                         Way way = osm.ways.get(wayId);
                         if (way == null) {
                             LOG.error("Way {} is not available.", wayId);

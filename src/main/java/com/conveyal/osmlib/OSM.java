@@ -2,11 +2,7 @@ package com.conveyal.osmlib;
 
 import com.conveyal.osmlib.serializer.NodeSerializer;
 import com.conveyal.osmlib.serializer.WaySerializer;
-import org.mapdb.Atomic;
-import org.mapdb.BTreeKeySerializer;
-import org.mapdb.DB;
-import org.mapdb.DBMaker;
-import org.mapdb.Fun.Tuple3;
+import org.mapdb.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -33,8 +29,12 @@ public class OSM implements OSMEntitySource, OSMEntitySink {
     public Map<Long, Way> ways;
     public Map<Long, Relation> relations;
 
-    /** A tile-based spatial index. */
-    public NavigableSet<Tuple3<Integer, Integer, Long>> index; // (x_tile, y_tile, wayId)
+    /** A tile-based spatial index.
+     * Key is 16 bytes long, first 4byte integer x_tile, second 4 byte integer y_tile, third 8 byte wayId.
+     * Use {@link OSM#indexMake(int, int, long)} to create new entry.
+     * Use {@link OSM#getInt(byte[], int)} and {@link DataIO#getLong(byte[], int)} to read data
+     * */
+    public NavigableSet<byte[]> index; // (x_tile, y_tile, wayId)
 
     /** The nodes that are referenced at least once by ways in this OSM. */
     NodeTracker referencedNodes = new NodeTracker();
@@ -60,26 +60,26 @@ public class OSM implements OSMEntitySource, OSMEntitySink {
     /**
      * Construct a new MapDB-based random-access OSM data store.
      * If diskPath is null, OSM will be loaded into a temporary file and deleted on shutdown.
-     * If diskPath is the string "__MEMORY__" the OSM will be stored entirely in memory. 
-     * 
+     * If diskPath is the string "__MEMORY__" the OSM will be stored entirely in memory.
+     *
      * @param diskPath - the file in which to save the data, null for a temp file, or "__MEMORY__" for in-memory.
      */
     public OSM (String diskPath) {
-        DBMaker dbMaker;
+        DBMaker.Maker dbMaker;
         if (diskPath == null) {
             LOG.info("OSM will be stored in a temporary file.");
-            dbMaker = DBMaker.newTempFileDB().deleteFilesAfterClose();
+            dbMaker = DBMaker.tempFileDB().deleteFilesAfterClose();
         } else {
             if (diskPath.equals("__MEMORY__")) {
                 LOG.info("OSM will be stored in memory.");
                 // 'direct' means off-heap memory, no garbage collection overhead
-                dbMaker = DBMaker.newMemoryDirectDB(); 
+                dbMaker = DBMaker.memoryDirectDB();
             } else {
                 LOG.info("OSM will be stored in file {}.", diskPath);
-                dbMaker = DBMaker.newFileDB(new File(diskPath));
+                dbMaker = DBMaker.fileDB(new File(diskPath));
             }
         }
-        
+
         // Compression has no appreciable effect on speed but reduces file size by about 16 percent.
         // Hash table cache (eviction by collision) is on by default with a size of 32k records.
         // http://www.mapdb.org/doc/caches.html
@@ -88,33 +88,33 @@ public class OSM implements OSMEntitySource, OSMEntitySink {
         db = dbMaker.asyncWriteEnable()
                 .transactionDisable()
                 //.cacheDisable()
-                .compressionEnable()
-                .mmapFileEnableIfSupported()
+                .compressionEnable() //TODO use serializer compression wrappers where needed, remove global compression
+                .fileMmapEnableIfSupported()
                 .closeOnJvmShutdown()
                 .make();
 
         if (db.getAll().isEmpty()) {
             LOG.info("No OSM tables exist yet, they will be created.");
         }
-        
-        nodes = db.createTreeMap("nodes")
-                .keySerializer(BTreeKeySerializer.ZERO_OR_POSITIVE_LONG)
+
+        nodes = db.treeMapCreate("nodes")
+                .keySerializer(BTreeKeySerializer.LONG)
                 .valueSerializer(new NodeSerializer())
                 .makeOrGet();
-        
-        ways =  db.createTreeMap("ways")
-                .keySerializer(BTreeKeySerializer.ZERO_OR_POSITIVE_LONG)
+
+        ways =  db.treeMapCreate("ways")
+                .keySerializer(BTreeKeySerializer.LONG)
                 .valueSerializer(new WaySerializer())
                 .makeOrGet();
-                
-        relations = db.createTreeMap("relations")
-                .keySerializer(BTreeKeySerializer.ZERO_OR_POSITIVE_LONG)
+
+        relations = db.treeMapCreate("relations")
+                .keySerializer(BTreeKeySerializer.LONG)
                 .makeOrGet();
 
         // Serializer delta-compresses the tuple as a whole and variable-width packs ints,
         // but does not recursively delta-code its elements.
-        index = db.createTreeSet("spatial_index")
-                .serializer(BTreeKeySerializer.TUPLE3) 
+        index = db.treeSetCreate("spatial_index")
+                .serializer(BTreeKeySerializer.BYTE_ARRAY)
                 .makeOrGet();
 
         // GetAtomicLong() will create the atomic long entry if it doesn't exist
@@ -220,7 +220,7 @@ public class OSM implements OSMEntitySource, OSMEntitySink {
         if (tile == null) {
             LOG.debug("Attempted insert way {} into the spatial index, but it is not currently in the database.", wayId);
         } else {
-            this.index.add(new Tuple3(tile.xtile, tile.ytile, wayId));
+            this.index.add(indexMake(tile.xtile, tile.ytile, wayId));
         }
     }
 
@@ -231,7 +231,7 @@ public class OSM implements OSMEntitySource, OSMEntitySink {
         } else {
             WebMercatorTile tile = tileForWay(wayId, way);
             if (tile != null) {
-                this.index.remove(new Tuple3(tile.xtile, tile.ytile, wayId));
+                this.index.remove(indexMake(tile.xtile, tile.ytile, wayId));
             }
         }
     }
@@ -244,7 +244,7 @@ public class OSM implements OSMEntitySource, OSMEntitySink {
         Node firstNode = this.nodes.get(firstNodeId);
         if (firstNode == null) {
             LOG.debug("Leaving way {} out of the index. It references node {} that was not (yet) provided.",
-                      wayId, firstNodeId);
+                    wayId, firstNodeId);
             return null;
         } else {
             WebMercatorTile tile = new WebMercatorTile(firstNode.getLat(), firstNode.getLon());
@@ -312,4 +312,32 @@ public class OSM implements OSMEntitySource, OSMEntitySink {
         db.close();
     }
 
+    public static int getInt(byte[] buf, int pos) {
+        return
+                (((int)buf[pos++] & 0xFF) << 24) |
+                (((int)buf[pos++] & 0xFF) << 16) |
+                (((int)buf[pos++] & 0xFF) <<  8) |
+                (((int)buf[pos] & 0xFF));
+
+    }
+
+    public static void setInt(byte[] buf, int pos,int v) {
+        buf[pos++] = (byte) (0xff & (v >> 24));
+        buf[pos++] = (byte) (0xff & (v >> 16));
+        buf[pos++] = (byte) (0xff & (v >> 8));
+        buf[pos] = (byte) (0xff & (v));
+    }
+
+    public static byte[] indexMake(int x_tile, int y_tile, long wayId){
+        if(wayId<0)
+            throw new AssertionError("negative wayId not supported");
+        //TODO clarify negative wayId, it does not work with byte[] comparator,
+        // unsigned longs have negative values  higher
+
+        byte[] ret = new byte[4+4+8];
+        setInt(ret,0,x_tile);
+        setInt(ret,4,y_tile);
+        DataIO.putLong(ret,8,wayId);
+        return ret;
+    }
 }

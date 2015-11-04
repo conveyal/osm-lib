@@ -9,7 +9,7 @@ import java.io.IOException;
 import java.io.Serializable;
 
 /** Ideally, these serializers would be the same ones used in the VEX binary exchange format. */
-public class WaySerializer implements Serializer<Way>, Serializable {
+public class WaySerializer extends Serializer<Way> implements Serializable {
 
     /** Delta-code the series of node references, and write out all values as varints. */
     @Override
@@ -37,8 +37,5 @@ public class WaySerializer implements Serializer<Way>, Serializable {
         VarInt.readTags(in, way);
         return way;
     }
-
-    @Override
-    public int fixedSize() { return -1; }
 
 }

@@ -17,6 +17,5 @@ public class OSMTest extends TestCase {
 	
 	public void tearDown() throws IOException{
 		Files.delete( Paths.get("./src/test/resources/tmp") );
-		Files.delete( Paths.get("./src/test/resources/tmp.p") );
 	}
 }
