@@ -145,6 +145,10 @@ public class VexOutput implements OSMEntitySink {
         endEntity();
     }
 
+    /**
+     * Delta coding node references across ways does help.
+     * Resetting the prevRef to zero for each way has been shown to increase size.
+     */
     @Override
     public void writeWay(long id, Way way) throws IOException {
         checkBlockTransition(VexFormat.VEX_WAY);
