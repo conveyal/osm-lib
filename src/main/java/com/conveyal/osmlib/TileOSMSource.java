@@ -52,11 +52,6 @@ public class TileOSMSource implements OSMEntitySource {
                     // Therefore we must vary one of the dimensions "manually". Consider a set containing all the
                     // integers from 00 to 99 at 2-tuples. The range from (1,1) to (2,2) does not contain the four
                     // elements (1,1) (1,2) (2,1) (2,2). It contains the elements (1,1) (1,2) (1,3) (1,4) ... (2,2).
-//                    @SuppressWarnings("unchecked")
-//                    NavigableSet<Tuple3<Integer, Integer, Long>> xSubset = osm.index.subSet(
-//                            new Tuple3(x, minY, null), true, // inclusive lower bound, null tests lower than anything
-//                            new Tuple3(x, maxY, Fun.HI), true  // inclusive upper bound, HI tests higher than anything
-//                    );
 
                     //TODO this can be even more speedup by using iterator, and cutting iteration when maxY is too high
                     Set<byte[]> xSubset = osm.index.subSet(

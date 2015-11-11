@@ -109,6 +109,7 @@ public class OSM implements OSMEntitySource, OSMEntitySink {
 
         relations = db.treeMapCreate("relations")
                 .keySerializer(BTreeKeySerializer.LONG)
+                .valueSerializer(new Relation.RelationSerializer())
                 .makeOrGet();
 
         // Serializer delta-compresses the tuple as a whole and variable-width packs ints,
@@ -118,8 +119,8 @@ public class OSM implements OSMEntitySource, OSMEntitySink {
                 .makeOrGet();
 
         // GetAtomicLong() will create the atomic long entry if it doesn't exist
-        timestamp = db.getAtomicLong("timestamp");
-        sequenceNumber = db.getAtomicLong("sequence_number");
+        timestamp = db.atomicLong("timestamp");
+        sequenceNumber = db.atomicLong("sequence_number");
 
     }
 

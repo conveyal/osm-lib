@@ -1,10 +1,9 @@
 package com.conveyal.osmlib;
 
-import com.google.common.collect.Maps;
+import gnu.trove.map.TLongObjectMap;
+import gnu.trove.map.hash.TLongObjectHashMap;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import java.util.Map;
 
 /** 
  * A sparse bit set capable of handling 64-bit int indexes (like OSM IDs).
@@ -30,7 +29,7 @@ public class NodeTracker {
     private static final long BLOCK_MASK = ~MID_MASK;
     
     /** Each block is 64 64-bit longs. */ 
-    private Map<Long, long[]> blocks = Maps.newHashMap();
+    private TLongObjectMap<long[]> blocks = new TLongObjectHashMap();
 
     private int index(long x) {
         return (int)((x & MID_MASK) >> LOW_SHIFT);

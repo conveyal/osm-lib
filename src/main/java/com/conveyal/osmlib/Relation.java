@@ -1,9 +1,13 @@
 package com.conveyal.osmlib;
 
 import com.google.common.collect.Lists;
+import org.mapdb.DataIO;
+import org.mapdb.Serializer;
 
+import java.io.DataInput;
+import java.io.DataOutput;
+import java.io.IOException;
 import java.io.Serializable;
-import java.util.Arrays;
 import java.util.List;
 
 public class Relation extends OSMEntity implements Serializable {
@@ -69,5 +73,37 @@ public class Relation extends OSMEntity implements Serializable {
     public Type getType() {
         return Type.RELATION;
     }
+
+
+    //TODO field 'tags' from parent class 'OSMEntity'
+    protected static final class RelationSerializer extends Serializer<Relation> implements Serializable{
+        @Override
+        public void serialize(DataOutput out, Relation value) throws IOException {
+            DataIO.packInt(out, value.members.size());
+            for(Member member:value.members){
+                DataIO.packInt(out, member.type.ordinal());
+                DataIO.packLong(out, member.id);
+                out.writeUTF(member.role);
+            }
+        }
+
+        @Override
+        public Relation deserialize(DataInput in, int available) throws IOException {
+
+            Relation ret = new Relation();
+            int size = DataIO.unpackInt(in);
+            for(int i=0;i<size;i++){
+                int typeInt = DataIO.unpackInt(in);
+                Member member = new Member();
+                member.type = OSMEntity.Type.values()[typeInt];
+                member.id = DataIO.unpackLong(in);
+                member.role = in.readUTF();
+
+                ret.members.add(member);
+            }
+            return ret;
+        }
+    }
+
 
 }
