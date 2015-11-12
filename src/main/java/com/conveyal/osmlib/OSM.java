@@ -90,6 +90,7 @@ public class OSM implements OSMEntitySource, OSMEntitySink {
                 //.cacheDisable()
                 .compressionEnable() //TODO use serializer compression wrappers where needed, remove global compression
                 .fileMmapEnableIfSupported()
+                .cacheHashTableEnable()
                 .closeOnJvmShutdown()
                 .make();
 
