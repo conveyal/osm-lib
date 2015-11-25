@@ -81,14 +81,14 @@ public class OSM implements OSMEntitySource, OSMEntitySink {
         }
 
         // Compression has no appreciable effect on speed but reduces file size by about 16 percent.
+        // Compression is applied to values only, keys are already compressed.
+
         // Hash table cache (eviction by collision) is on by default with a size of 32k records.
         // http://www.mapdb.org/doc/caches.html
         // Our objects do not have semantic hash and equals functions, but I suppose it's the table keys that are hashed
         // not the values.
-        db = dbMaker.asyncWriteEnable()
+        db = dbMaker
                 .transactionDisable()
-                //.cacheDisable()
-                .compressionEnable() //TODO use serializer compression wrappers where needed, remove global compression
                 .fileMmapEnableIfSupported()
                 .cacheHashTableEnable()
                 .closeOnJvmShutdown()
@@ -100,17 +100,17 @@ public class OSM implements OSMEntitySource, OSMEntitySink {
 
         nodes = db.treeMapCreate("nodes")
                 .keySerializer(BTreeKeySerializer.LONG)
-                .valueSerializer(new NodeSerializer())
+                .valueSerializer(new Serializer.CompressionWrapper(new NodeSerializer()))
                 .makeOrGet();
 
         ways =  db.treeMapCreate("ways")
                 .keySerializer(BTreeKeySerializer.LONG)
-                .valueSerializer(new WaySerializer())
+                .valueSerializer(new Serializer.CompressionWrapper(new WaySerializer()))
                 .makeOrGet();
 
         relations = db.treeMapCreate("relations")
                 .keySerializer(BTreeKeySerializer.LONG)
-                .valueSerializer(new Relation.RelationSerializer())
+                .valueSerializer(new Serializer.CompressionWrapper(new Relation.RelationSerializer()))
                 .makeOrGet();
 
         // Serializer delta-compresses the tuple as a whole and variable-width packs ints,
@@ -306,7 +306,8 @@ public class OSM implements OSMEntitySource, OSMEntitySink {
 
     @Override
     public void writeEnd() throws IOException {
-        // Do nothing.
+        db.compact();
+        db.commit();
     }
 
     /** Close the database file to ensure clean shutdown and avoid leaving the async write thread running. */
