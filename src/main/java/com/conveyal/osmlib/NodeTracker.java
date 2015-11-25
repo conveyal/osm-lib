@@ -49,19 +49,23 @@ public class NodeTracker {
         if (block == null && create) {
             block = new long[64];
             blocks.put(key, block);
-            LOG.debug("Number of blocks is now {}, total {} MiB", blocks.size(), blocks.size() * 64 * 8 / 1024.0 / 1024.0);
+            if(LOG.isDebugEnabled())
+                LOG.debug("Number of blocks is now {}, total {} MiB", blocks.size(), blocks.size() * 64 * 8 / 1024.0 / 1024.0);
         }
-        LOG.debug("   block {}", key);
+        if(LOG.isDebugEnabled())
+            LOG.debug("   block {}", key);
         return block;
     }
     
     public void add(long x) {
-        LOG.debug("set node {}: index {} bit {}", x, index(x), bit(x));
+        if(LOG.isDebugEnabled())
+            LOG.debug("set node {}: index {} bit {}", x, index(x), bit(x));
         block(x, true)[index(x)] |= (1L << bit(x));
     }
 
     public boolean contains(long x) {
-        LOG.debug("get node {}: index {} bit {}", x, index(x), bit(x));
+        if(LOG.isDebugEnabled())
+            LOG.debug("get node {}: index {} bit {}", x, index(x), bit(x));
         long[] block = block(x, false);
         if (block == null) return false; 
         return (block[index(x)] & (1L << bit(x))) != 0;
