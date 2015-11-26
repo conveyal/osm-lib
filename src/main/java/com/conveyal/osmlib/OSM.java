@@ -80,6 +80,8 @@ public class OSM implements OSMEntitySource, OSMEntitySink {
             }
         }
 
+        // Async write reduces write amplification and makes import faster
+
         // Compression has no appreciable effect on speed but reduces file size by about 16 percent.
         // Compression is applied to values only, keys are already compressed.
 
@@ -88,6 +90,7 @@ public class OSM implements OSMEntitySource, OSMEntitySink {
         // Our objects do not have semantic hash and equals functions, but I suppose it's the table keys that are hashed
         // not the values.
         db = dbMaker
+                .asyncWriteEnable()
                 .transactionDisable()
                 .fileMmapEnableIfSupported()
                 .fileMmapCleanerHackEnable()
