@@ -90,6 +90,8 @@ public class OSM implements OSMEntitySource, OSMEntitySink {
         db = dbMaker
                 .transactionDisable()
                 .fileMmapEnableIfSupported()
+                .fileMmapCleanerHackEnable()
+                .fileMmapPreclearDisable()
                 .cacheHashTableEnable()
                 .closeOnJvmShutdown()
                 .make();
