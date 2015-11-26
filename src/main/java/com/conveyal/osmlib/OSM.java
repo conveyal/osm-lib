@@ -311,8 +311,8 @@ public class OSM implements OSMEntitySource, OSMEntitySink {
 
     @Override
     public void writeEnd() throws IOException {
-        db.compact();
         db.commit();
+        db.compact();
     }
 
     /** Close the database file to ensure clean shutdown and avoid leaving the async write thread running. */
