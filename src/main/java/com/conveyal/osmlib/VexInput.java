@@ -28,11 +28,11 @@ public class VexInput implements OSMEntitySource {
     /* The OSM entities reconstructed from the VEX stream will be pushed through to this sink. */
     private OSMEntitySink entitySink;
 
-    private int nNodesRead = 0;
+    private long nNodesRead = 0;
 
-    private int nWaysRead = 0;
+    private long nWaysRead = 0;
 
-    private int nRelationsRead = 0;
+    private long nRelationsRead = 0;
 
     public VexInput(InputStream vexStream) {
         this.vexStream = vexStream;

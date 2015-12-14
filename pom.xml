@@ -7,6 +7,9 @@
   <version>0.1-SNAPSHOT</version>
   <name>osm-lib</name>
   <url>https://github.com/conveyal/osm-lib</url>
+  <properties>
+    <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+  </properties>
 
   <!-- Define where the source code for this project lives -->
   <scm>

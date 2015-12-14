@@ -26,6 +26,7 @@ public class Converter {
         String outputPath = args[1];
 
         // Pump the entities from the input file directly to the output file.
+        long startTime = System.currentTimeMillis();
         try {
             OSMEntitySource source = OSMEntitySource.forFile(inputPath);
             OSMEntitySink sink = OSMEntitySink.forFile(outputPath);
@@ -33,7 +34,7 @@ public class Converter {
         } catch (IOException ex) {
             throw new RuntimeException(ex);
         }
-
+        LOG.info("Total run time: {} sec", (System.currentTimeMillis() - startTime)/1000D);
     }
 
 }

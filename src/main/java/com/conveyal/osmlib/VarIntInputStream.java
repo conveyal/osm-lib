@@ -56,7 +56,7 @@ public class VarIntInputStream {
 
     /** Implements the same read loop found in DataInputStream.readFully(). */
     public byte[] readBytes(int len) throws IOException {
-        if (len > 300) {
+        if (len > 1024) {
             throw new RuntimeException(String.format("Attempted to read %d bytes at once, file is probably corrupted.", len));
         }
         byte[] buf = new byte[len];
