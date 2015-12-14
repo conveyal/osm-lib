@@ -27,7 +27,7 @@ public class VanillaExtract {
 
     private static final Logger LOG = LoggerFactory.getLogger(VanillaExtract.class);
 
-    private static final int PORT = 9001;
+    private static final int PORT = 9002;
 
     private static final String BIND_ADDRESS = "0.0.0.0";
 
@@ -113,7 +113,7 @@ public class VanillaExtract {
                 double minLon = Double.parseDouble(coords[1]);
                 double maxLat = Double.parseDouble(coords[2]);
                 double maxLon = Double.parseDouble(coords[3]);
-                if (minLat >= maxLat || minLon >= maxLon) {
+                if (minLat >= maxLat || minLon >= maxLon || minLat < -90 || maxLat > 90 || minLon < -180 || maxLon > 180) {
                     throw new IllegalArgumentException();
                 }
                 /* Respond to head requests to let the client know the server is alive and the request is valid. */
