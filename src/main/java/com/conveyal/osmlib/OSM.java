@@ -261,17 +261,6 @@ public class OSM implements OSMEntitySource, OSMEntitySink {
         }
     }
 
-    /**
-     * Gets Way from ways map
-     *
-     * @param wayId OSMID
-     * @return Way or null if way isn't found
-     */
-    public Way getWay(long wayId) {
-        Way way = ways.get(wayId);
-        return way;
-    }
-
     /** @return null if the way is not in the database and therefore can't be located. */
     private WebMercatorTile tileForWay (long wayId, Way way) {
         if (way == null) way = ways.get(wayId); // Way object was not supplied, fetch it from the database.
