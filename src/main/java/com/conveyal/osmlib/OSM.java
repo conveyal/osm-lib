@@ -148,6 +148,22 @@ public class OSM implements OSMEntitySource, OSMEntitySink {
     public void readFromFile(String filePath) {
         if (reading && !nodes.isEmpty()) {
             LOG.info("Not reading from file since database is already filled!");
+            //We need to rebuild intersectionNodes since it isn't saved in mapDB
+            // and without it edge creation is wrong (since edges aren't split in intersections)
+            if (intersectionDetection) {
+                for (Way way : ways.values()) {
+                    for (long nodeId : way.nodes) {
+                        if (referencedNodes.contains(nodeId)) {
+                            intersectionNodes.add(nodeId);
+                        } else {
+                            referencedNodes.add(nodeId);
+                        }
+                    }
+                }
+                //referenceNodes isn't needed after intersectionNodes is built
+                referencedNodes = null;
+                LOG.info("Intersection rebuild");
+            }
             return;
         }
         try {
