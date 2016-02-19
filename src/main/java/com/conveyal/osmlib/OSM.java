@@ -79,7 +79,7 @@ public class OSM implements OSMEntitySource, OSMEntitySink {
                 dbMaker = DBMaker.newMemoryDirectDB(); 
             } else {
                 File dp = new File(diskPath);
-                reading = diskPath.endsWith("mapdb") && dp.exists();
+                reading = (diskPath.endsWith(".mapdb") || diskPath.endsWith(".db")) && dp.exists();
                 if (reading) {
                     LOG.info("Reading OSM DB from: {}", diskPath);
                 } else {
