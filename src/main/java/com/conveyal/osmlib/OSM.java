@@ -57,6 +57,9 @@ public class OSM implements OSMEntitySource, OSMEntitySink {
     /* If true, track which nodes are referenced by more than one way. */
     public boolean intersectionDetection = false;
 
+    /** If true we are reading already filled OSM mapdv **/
+    private boolean reading = false;
+
     /**
      * Construct a new MapDB-based random-access OSM data store.
      * If diskPath is null, OSM will be loaded into a temporary file and deleted on shutdown.
@@ -75,23 +78,41 @@ public class OSM implements OSMEntitySource, OSMEntitySink {
                 // 'direct' means off-heap memory, no garbage collection overhead
                 dbMaker = DBMaker.newMemoryDirectDB(); 
             } else {
-                LOG.info("OSM will be stored in file {}.", diskPath);
-                dbMaker = DBMaker.newFileDB(new File(diskPath));
+                File dp = new File(diskPath);
+                reading = (diskPath.endsWith(".mapdb") || diskPath.endsWith(".db")) && dp.exists();
+                if (reading) {
+                    LOG.info("Reading OSM DB from: {}", diskPath);
+                } else {
+                    LOG.info("OSM will be stored in file {}.", diskPath);
+                }
+                dbMaker = DBMaker.newFileDB(dp);
             }
         }
-        
-        // Compression has no appreciable effect on speed but reduces file size by about 16 percent.
-        // Hash table cache (eviction by collision) is on by default with a size of 32k records.
-        // http://www.mapdb.org/doc/caches.html
-        // Our objects do not have semantic hash and equals functions, but I suppose it's the table keys that are hashed
-        // not the values.
-        db = dbMaker.asyncWriteEnable()
+
+
+        if (reading) {
+            db = dbMaker.readOnly()
+                .transactionDisable()
+                .compressionEnable()
+                //.cacheLRUEnable()
+                //.cacheSize(1000)
+                .mmapFileEnableIfSupported()
+                .make();
+        } else {
+            // Compression has no appreciable effect on speed but reduces file size by about 16 percent.
+            // Hash table cache (eviction by collision) is on by default with a size of 32k records.
+            // http://www.mapdb.org/doc/caches.html
+            // Our objects do not have semantic hash and equals functions, but I suppose it's the table keys that are hashed
+            // not the values.
+            db = dbMaker.asyncWriteEnable()
                 .transactionDisable()
                 //.cacheDisable()
                 .compressionEnable()
                 .mmapFileEnableIfSupported()
                 .closeOnJvmShutdown()
                 .make();
+        }
+
 
         if (db.getAll().isEmpty()) {
             LOG.info("No OSM tables exist yet, they will be created.");
@@ -125,6 +146,26 @@ public class OSM implements OSMEntitySource, OSMEntitySink {
 
     // TODO put these read/write methods on all sources/sinks
     public void readFromFile(String filePath) {
+        if (reading && !nodes.isEmpty()) {
+            LOG.info("Not reading from file since database is already filled!");
+            //We need to rebuild intersectionNodes since it isn't saved in mapDB
+            // and without it edge creation is wrong (since edges aren't split in intersections)
+            if (intersectionDetection) {
+                for (Way way : ways.values()) {
+                    for (long nodeId : way.nodes) {
+                        if (referencedNodes.contains(nodeId)) {
+                            intersectionNodes.add(nodeId);
+                        } else {
+                            referencedNodes.add(nodeId);
+                        }
+                    }
+                }
+                //referenceNodes isn't needed after intersectionNodes is built
+                referencedNodes = null;
+                LOG.info("Intersection rebuild");
+            }
+            return;
+        }
         try {
             LOG.info("Reading OSM from file '{}'.", filePath);
             OSMEntitySource source = OSMEntitySource.forFile(filePath);
