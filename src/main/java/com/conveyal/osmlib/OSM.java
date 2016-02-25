@@ -2,10 +2,7 @@ package com.conveyal.osmlib;
 
 import com.conveyal.osmlib.serializer.NodeSerializer;
 import com.conveyal.osmlib.serializer.WaySerializer;
-import org.mapdb.Atomic;
-import org.mapdb.BTreeKeySerializer;
-import org.mapdb.DB;
-import org.mapdb.DBMaker;
+import org.mapdb.*;
 import org.mapdb.Fun.Tuple3;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -35,6 +32,15 @@ public class OSM implements OSMEntitySource, OSMEntitySink {
 
     /** A tile-based spatial index. */
     public NavigableSet<Tuple3<Integer, Integer, Long>> index; // (x_tile, y_tile, wayId)
+
+    /** An index of which relations reference a way */
+    public NavigableSet<Fun.Tuple2<Long, Long>> relationsByWay;
+
+    /** An index of which relations reference a node */
+    public NavigableSet<Fun.Tuple2<Long, Long>> relationsByNode;
+
+    /** An index of which relations reference a relation (yes, relations can contain other relations) */
+    public NavigableSet<Fun.Tuple2<Long, Long>> relationsByRelation;
 
     /** The nodes that are referenced at least once by ways in this OSM. */
     NodeTracker referencedNodes = new NodeTracker();
@@ -113,7 +119,6 @@ public class OSM implements OSMEntitySource, OSMEntitySink {
                 .make();
         }
 
-
         if (db.getAll().isEmpty()) {
             LOG.info("No OSM tables exist yet, they will be created.");
         }
@@ -127,10 +132,12 @@ public class OSM implements OSMEntitySource, OSMEntitySink {
                 .keySerializer(BTreeKeySerializer.ZERO_OR_POSITIVE_LONG)
                 .valueSerializer(new WaySerializer())
                 .makeOrGet();
-                
-        relations = db.createTreeMap("relations")
+
+        // need as btreemap below to bind function
+        BTreeMap<Long, Relation> relations = db.createTreeMap("relations")
                 .keySerializer(BTreeKeySerializer.ZERO_OR_POSITIVE_LONG)
                 .makeOrGet();
+        this.relations = relations;
 
         // Serializer delta-compresses the tuple as a whole and variable-width packs ints,
         // but does not recursively delta-code its elements.
@@ -138,10 +145,30 @@ public class OSM implements OSMEntitySource, OSMEntitySink {
                 .serializer(BTreeKeySerializer.TUPLE3) 
                 .makeOrGet();
 
+        relationsByWay = db.createTreeSet("relations_by_way")
+                .serializer(BTreeKeySerializer.TUPLE2)
+                .makeOrGet();
+
+        relationsByNode = db.createTreeSet("relations_by_node")
+                .serializer(BTreeKeySerializer.TUPLE2)
+                .makeOrGet();
+
+        relationsByRelation = db.createTreeSet("relations_by_relation")
+                .serializer(BTreeKeySerializer.TUPLE2)
+                .makeOrGet();
+
+        Bind.secondaryKeys(relations, relationsByNode,
+                (k, r) -> r.members.stream().filter(m -> m.type == OSMEntity.Type.NODE).map(m -> m.id).toArray(i -> new Long[i]));
+
+        Bind.secondaryKeys(relations, relationsByWay,
+                (k, r) -> r.members.stream().filter(m -> m.type == OSMEntity.Type.WAY).map(m -> m.id).toArray(i -> new Long[i]));
+
+        Bind.secondaryKeys(relations, relationsByRelation,
+                (k, r) -> r.members.stream().filter(m -> m.type == OSMEntity.Type.RELATION).map(m -> m.id).toArray(i -> new Long[i]));
+
         // GetAtomicLong() will create the atomic long entry if it doesn't exist
         timestamp = db.getAtomicLong("timestamp");
         sequenceNumber = db.getAtomicLong("sequence_number");
-
     }
 
     // TODO put these read/write methods on all sources/sinks
