@@ -91,7 +91,7 @@ public class OSM implements OSMEntitySource, OSMEntitySink {
 
 
         if (reading) {
-            db = dbMaker.readOnly()
+            db = dbMaker
                 .transactionDisable()
                 .compressionEnable()
                 //.cacheLRUEnable()
