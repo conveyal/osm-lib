@@ -4,7 +4,7 @@
   <groupId>com.conveyal</groupId>
   <artifactId>osm-lib</artifactId>
   <packaging>jar</packaging>
-  <version>0.1-SNAPSHOT</version>
+  <version>1.0.0</version>
   <name>osm-lib</name>
   <url>https://github.com/conveyal/osm-lib</url>
   <properties>
