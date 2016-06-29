@@ -12,7 +12,7 @@ install: true
 # Run all Maven phases at once up through verify, install, and deploy.
 script: |
   # only (attempt to) deploy non-pull request commits to the master branch
-  if [ "$TRAVIS_PULL_REQUEST" = false ] && [ "$TRAVIS_BRANCH" = master ]; then
+  if [[ "$TRAVIS_PULL_REQUEST" = false ]] && [[ "$TRAVIS_BRANCH" = master || ! -z "$TRAVIS_TAG" ]]; then
     mvn clean deploy
   else
     # otherwise, just run test suite
