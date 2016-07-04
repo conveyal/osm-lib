@@ -13,6 +13,7 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.util.Map;
 import java.util.NavigableSet;
+import java.util.stream.LongStream;
 
 /**
  * osm-lib representation of a subset of OpenStreetMap. One or more OSM files (e.g. PBF) can be loaded into this
@@ -200,16 +201,20 @@ public class OSM implements OSMEntitySource, OSMEntitySink {
      * Functions finds nodes which appear in multiple ways
      *
      * First time node appears it is added in referencedNodes and if it appears again it is intersection
+     *
+     * It also skips duplicate nodes in one way. If duplicate nodes aren't skipped there are a lot
+     * of zero length edges because OSM ways have sometimes duplicate nodes.
      * @param way
      */
-    private void findIntersectionNodes(Way way) {
-        for (long nodeId : way.nodes) {
-            if (referencedNodes.contains(nodeId)) {
-                intersectionNodes.add(nodeId);
-            } else {
-                referencedNodes.add(nodeId);
+    void findIntersectionNodes(Way way) {
+        LongStream.of(way.nodes).distinct().forEach(nodeId -> {
+                if (referencedNodes.contains(nodeId)) {
+                    intersectionNodes.add(nodeId);
+                } else {
+                    referencedNodes.add(nodeId);
+                }
             }
-        }
+        );
     }
 
     public void readFromUrl(String urlString) {
