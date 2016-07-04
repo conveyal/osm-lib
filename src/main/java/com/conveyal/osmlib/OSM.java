@@ -181,13 +181,7 @@ public class OSM implements OSMEntitySource, OSMEntitySink {
                 // FIXME this takes two minutes on NL OSM. We should probably save the intersections in a MapDB table.
                 LOG.info("Detecting intersections...");
                 for (Way way : ways.values()) {
-                    for (long nodeId : way.nodes) {
-                        if (referencedNodes.contains(nodeId)) {
-                            intersectionNodes.add(nodeId);
-                        } else {
-                            referencedNodes.add(nodeId);
-                        }
-                    }
+                    findIntersectionNodes(way);
                 }
                 //referenceNodes isn't needed after intersectionNodes is built
                 referencedNodes = null;
@@ -201,6 +195,22 @@ public class OSM implements OSMEntitySource, OSMEntitySink {
             source.copyTo(this);
         } catch (Exception ex) {
             throw new RuntimeException("Error occurred while parsing OSM file " + filePath, ex);
+        }
+    }
+
+    /**
+     * Functions finds nodes which appear in multiple ways
+     *
+     * First time node appears it is added in referencedNodes and if it appears again it is intersection
+     * @param way
+     */
+    private void findIntersectionNodes(Way way) {
+        for (long nodeId : way.nodes) {
+            if (referencedNodes.contains(nodeId)) {
+                intersectionNodes.add(nodeId);
+            } else {
+                referencedNodes.add(nodeId);
+            }
         }
     }
 
@@ -351,13 +361,7 @@ public class OSM implements OSMEntitySource, OSMEntitySink {
 
         // Optionally track which nodes are referenced by more than one way.
         if (intersectionDetection) {
-            for (long nodeId : way.nodes) {
-                if (referencedNodes.contains(nodeId)) {
-                    intersectionNodes.add(nodeId);
-                } else {
-                    referencedNodes.add(nodeId);
-                }
-            }
+            findIntersectionNodes(way);
         }
 
         // Insert the way into the tile-based spatial index according to its first node.
