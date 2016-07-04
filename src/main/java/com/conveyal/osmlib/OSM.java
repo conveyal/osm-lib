@@ -180,9 +180,7 @@ public class OSM implements OSMEntitySource, OSMEntitySink {
                 // and without it edge creation is wrong (since edges aren't split in intersections)
                 // FIXME this takes two minutes on NL OSM. We should probably save the intersections in a MapDB table.
                 LOG.info("Detecting intersections...");
-                for (Way way : ways.values()) {
-                    findIntersectionNodes(way);
-                }
+                ways.values().forEach(this::findIntersectionNodes);
                 //referenceNodes isn't needed after intersectionNodes is built
                 referencedNodes = null;
                 LOG.info("Done detecting intersections.");
