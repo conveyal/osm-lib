@@ -44,6 +44,8 @@ public class OSMCache {
 
         File cacheFile = new File(cacheDir, cleanId + ".pbf");
 
+        if (cacheFile.exists()) cacheFile.delete();
+
         if (osmFile.getName().endsWith(".pbf")) {
             Files.copy(osmFile.toPath(), cacheFile.toPath());
         } else {
