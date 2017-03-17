@@ -46,7 +46,7 @@ public class OSMTest extends TestCase {
 
 		//No intersections currently
 		assertTrue(
-			LongStream.of(way1.nodes).allMatch(nodeid -> !osm.intersectionNodes.contains(nodeid)));
+			LongStream.of(way1.nodes).noneMatch(nodeid -> osm.intersectionNodes.contains(nodeid)));
 
 		//This way intersects with previous one in node 55
 		Way wayIntersectsWithWay1 = new Way();
@@ -56,10 +56,10 @@ public class OSMTest extends TestCase {
 		long[] nonIntersections = new long[] { 5, 88, 3, 18 };
 
 		assertTrue(LongStream.of(nonIntersections)
-			.allMatch(nodeid -> !osm.intersectionNodes.contains(nodeid)));
+			.noneMatch(nodeid -> osm.intersectionNodes.contains(nodeid)));
 		assertTrue(osm.intersectionNodes.contains(55));
 
-		//Node with duplicate nodes which shouldn't be counted as intersection
+		//way with consecutive duplicate nodes which shouldn't be counted as intersection
 		Way wayWithDuplicateNodes = new Way();
 		wayWithDuplicateNodes.nodes = new long[] { 8, 7, 7, 33, 15 };
 		nonIntersections = new long[] { 8, 7, 33, 15 };
@@ -67,16 +67,16 @@ public class OSMTest extends TestCase {
 		osm.findIntersectionNodes(wayWithDuplicateNodes);
 
 		assertTrue(LongStream.of(nonIntersections)
-			.allMatch(nodeid -> !osm.intersectionNodes.contains(nodeid)));
+			.noneMatch(nodeid -> osm.intersectionNodes.contains(nodeid)));
 
-		//Node with duplicate nodes which are actually an intersection
+		//Way with consecutive duplicate nodes which are actually an intersection with a different road
 		Way wayWithDuplicateNodesAndIntersection = new Way();
 		wayWithDuplicateNodesAndIntersection.nodes = new long[] { 2, 98, 3, 3 };
 		nonIntersections = new long[] { 2, 98 };
 		osm.findIntersectionNodes(wayWithDuplicateNodesAndIntersection);
 
 		assertTrue(LongStream.of(nonIntersections)
-			.allMatch(nodeid -> !osm.intersectionNodes.contains(nodeid)));
+			.noneMatch(nodeid -> osm.intersectionNodes.contains(nodeid)));
 		assertTrue(osm.intersectionNodes.contains(3));
 
 		//Way with duplicate non consecutive nodes are actually an self intersection (node 34 self intersects)
@@ -86,7 +86,7 @@ public class OSMTest extends TestCase {
 		osm.findIntersectionNodes(wayWithDuplicateNonConsecutiveNodesAndIntersection);
 
 		assertTrue(LongStream.of(nonIntersections)
-			.allMatch(nodeid -> !osm.intersectionNodes.contains(nodeid)));
+			.noneMatch(nodeid -> osm.intersectionNodes.contains(nodeid)));
 		assertTrue(osm.intersectionNodes.contains(34));
 
 		//Way with duplicate non consecutive nodes are actually an self intersection (node 134 self intersects)
@@ -96,7 +96,7 @@ public class OSMTest extends TestCase {
 		osm.findIntersectionNodes(wayWithDuplicateNonConsecutiveNodesAndIntersection);
 
 		assertTrue(LongStream.of(nonIntersections)
-			.allMatch(nodeid -> !osm.intersectionNodes.contains(nodeid)));
+			.noneMatch(nodeid -> osm.intersectionNodes.contains(nodeid)));
 		assertTrue(osm.intersectionNodes.contains(134));
 
 	}
