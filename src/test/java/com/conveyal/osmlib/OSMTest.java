@@ -79,6 +79,26 @@ public class OSMTest extends TestCase {
 			.allMatch(nodeid -> !osm.intersectionNodes.contains(nodeid)));
 		assertTrue(osm.intersectionNodes.contains(3));
 
+		//Way with duplicate non consecutive nodes are actually an self intersection (node 34 self intersects)
+		Way wayWithDuplicateNonConsecutiveNodesAndIntersection = new Way();
+		wayWithDuplicateNonConsecutiveNodesAndIntersection.nodes = new long[] { 50, 34, 105, 111, 34, 85 };
+		nonIntersections = new long[] { 50, 105, 111, 85 };
+		osm.findIntersectionNodes(wayWithDuplicateNonConsecutiveNodesAndIntersection);
+
+		assertTrue(LongStream.of(nonIntersections)
+			.allMatch(nodeid -> !osm.intersectionNodes.contains(nodeid)));
+		assertTrue(osm.intersectionNodes.contains(34));
+
+		//Way with duplicate non consecutive nodes are actually an self intersection (node 134 self intersects)
+		wayWithDuplicateNonConsecutiveNodesAndIntersection = new Way();
+		wayWithDuplicateNonConsecutiveNodesAndIntersection.nodes = new long[] { 150, 134, 1105, 1111, 134};
+		nonIntersections = new long[] { 150, 1105, 1111};
+		osm.findIntersectionNodes(wayWithDuplicateNonConsecutiveNodesAndIntersection);
+
+		assertTrue(LongStream.of(nonIntersections)
+			.allMatch(nodeid -> !osm.intersectionNodes.contains(nodeid)));
+		assertTrue(osm.intersectionNodes.contains(134));
+
 	}
 
 	public void tearDown() throws IOException{

@@ -202,19 +202,29 @@ public class OSM implements OSMEntitySource, OSMEntitySink {
      *
      * First time node appears it is added in referencedNodes and if it appears again it is intersection
      *
-     * It also skips duplicate nodes in one way. If duplicate nodes aren't skipped there are a lot
+     * Function skips all ways shorter then 3 nodes since you can't split 2 node way more then it already is
+     *
+     * It also skips consecutive duplicate nodes in one way. If duplicate nodes aren't skipped there are a lot
      * of zero length edges because OSM ways have sometimes duplicate nodes.
      * @param way
      */
     void findIntersectionNodes(Way way) {
-        LongStream.of(way.nodes).distinct().forEach(nodeId -> {
+        if (way.nodes.length <= 2) {
+            return;
+        }
+        long prevNodeId = way.nodes[0];
+        for(int i=1; i < way.nodes.length; i++) {
+            long nodeId = way.nodes[i];
+            //This skips consecutive duplicate nodes
+            if (nodeId!=prevNodeId) {
                 if (referencedNodes.contains(nodeId)) {
                     intersectionNodes.add(nodeId);
                 } else {
                     referencedNodes.add(nodeId);
                 }
             }
-        );
+            prevNodeId = nodeId;
+        }
     }
 
     public void readFromUrl(String urlString) {
