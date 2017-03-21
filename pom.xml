@@ -1,31 +1,66 @@
 <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
   xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
   <modelVersion>4.0.0</modelVersion>
+
+  <name>osm-lib</name>
+  <description>A library for loading and indexing OSM PBF files for random access</description>
+  <url>https://github.com/conveyal/osm-lib</url>
+
   <groupId>com.conveyal</groupId>
   <artifactId>osm-lib</artifactId>
-  <packaging>jar</packaging>
   <version>1.2.0-SNAPSHOT</version>
-  <name>osm-lib</name>
-  <url>https://github.com/conveyal/osm-lib</url>
-  <properties>
-    <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-  </properties>
+  <packaging>jar</packaging>
+
+  <licenses>
+    <license>
+      <name>BSD Two Clause</name>
+      <url>https://opensource.org/licenses/BSD-2-Clause</url>
+    </license>
+  </licenses>
+
+  <!-- Developer entries are provided for primary developers.
+ For other contributors, see https://github.com/conveyal/osm-lib/graphs/contributors -->
+  <developers>
+    <developer>
+      <name>Andrew Byrd</name>
+      <email>abyrd@conveyal.com</email>
+      <organization>Conveyal</organization>
+      <organizationUrl>http://conveyal.com/</organizationUrl>
+    </developer>
+    <developer>
+      <name>Brandon Martin-Anderson</name>
+      <email>badhill@gmail.com</email>
+      <organization>Ex-Conveyal</organization>
+      <organizationUrl>http://conveyal.com/</organizationUrl>
+    </developer>
+    <developer>
+      <name>Matt Conway</name>
+      <email>mconway@conveyal.com</email>
+      <organization>Conveyal</organization>
+      <organizationUrl>http://conveyal.com/</organizationUrl>
+    </developer>
+  </developers>
 
   <!-- Define where the source code for this project lives -->
   <scm>
     <connection>scm:git:https://github.com/conveyal/osm-lib.git</connection>
     <developerConnection>scm:git:ssh://git@github.com/conveyal/osm-lib.git</developerConnection>
-    <url>https://github.com/conveyal/osm-lib.git</url>
+    <url>https://github.com/conveyal/osm-lib</url>
   </scm>
+
+  <!-- Define some variables to be used elsewhere in the build. -->
+  <properties>
+    <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+  </properties>
 
   <!-- Define where the artifacts produced by this build will be deployed -->
   <distributionManagement>
-    <repository>
-      <!-- Also used as snapshotRepository by default -->
-      <id>conveyal-maven-repo</id>
-      <name>Conveyal Maven Repository</name>
-      <url>s3://maven.conveyal.com/</url>
-    </repository>
+    <!-- We are using Sonatype Nexus Staging instead of Maven Release plugin.
+         Only a snapshot repo should be configured. Releases are done from that snapshot staging repo. -->
+    <snapshotRepository>
+      <id>ossrh</id>
+      <url>https://oss.sonatype.org/content/repositories/snapshots</url>
+    </snapshotRepository>
   </distributionManagement>
 
   <build>
@@ -40,23 +75,73 @@
           <target>1.8</target>
         </configuration>
       </plugin>
+      <plugin>
+        <!-- Recommended way to deploy to OSSRH -->
+        <groupId>org.sonatype.plugins</groupId>
+        <artifactId>nexus-staging-maven-plugin</artifactId>
+        <version>1.6.7</version>
+        <extensions>true</extensions>
+        <configuration>
+          <serverId>ossrh</serverId>
+          <nexusUrl>https://oss.sonatype.org/</nexusUrl>
+          <!-- Release versions will be synced to Maven Central automatically. -->
+          <autoReleaseAfterClose>true</autoReleaseAfterClose>
+        </configuration>
+      </plugin>
+      <plugin>
+        <!-- Allow attaching Javadoc during releases -->
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-javadoc-plugin</artifactId>
+        <version>2.10.3</version>
+        <configuration>
+          <!-- Turn off Java 8 strict Javadoc checking -->
+          <additionalparam>-Xdoclint:none</additionalparam>
+        </configuration>
+        <executions>
+          <!-- Compress Javadoc into JAR and include that JAR when deploying. -->
+          <execution>
+            <id>attach-javadocs</id>
+            <goals>
+              <goal>jar</goal>
+            </goals>
+          </execution>
+        </executions>
+      </plugin>
+      <plugin>
+        <!-- Include zipped source code in releases -->
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-source-plugin</artifactId>
+        <executions>
+          <execution>
+            <id>attach-sources</id>
+            <goals>
+              <goal>jar-no-fork</goal>
+            </goals>
+          </execution>
+        </executions>
+      </plugin>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-gpg-plugin</artifactId>
+        <version>1.5</version>
+        <executions>
+          <execution>
+            <id>sign-artifacts</id>
+            <!-- We sign in the verify phase, which means it will happen for install and deploy but not package. -->
+            <phase>verify</phase>
+            <goals>
+              <goal>sign</goal>
+            </goals>
+          </execution>
+        </executions>
+      </plugin>
     </plugins>
-    <!-- "Wagon" necessary for uploading/deploying artifacts to the Conveyal Maven repo on Amazon S3. -->
-    <extensions>
-      <extension>
-          <groupId>org.kuali.maven.wagons</groupId>
-          <artifactId>maven-s3-wagon</artifactId>
-          <version>1.2.1</version>
-      </extension>
-    </extensions>
   </build>
+
   <repositories>
-    <repository>
-      <id>conveyal</id>
-      <name>Conveyal Maven Repository</name>
-       <url>https://maven.conveyal.com/</url>
-    </repository>
+    <!-- no external repositories! -->
   </repositories>
+
   <dependencies>
     <dependency>
       <groupId>junit</groupId>
