@@ -4,6 +4,11 @@ language: java
 jdk:
   - oraclejdk8
 
+# Decrypt and import the artifact signing certificate before running the build
+before_install:
+  - openssl aes-256-cbc -K $encrypted_3ec7d78ab93d_key -iv $encrypted_3ec7d78ab93d_iv -in maven-artifact-signing-key.asc.enc -out maven-artifact-signing-key.asc -d
+  - gpg --import --batch maven-artifact-signing-key.asc
+
 # Replace Travis's default Maven installation step with a no-op.
 # This avoids redundantly pre-running 'mvn install -DskipTests' every time.
 install: true
@@ -13,17 +18,19 @@ install: true
 script: |
   # only (attempt to) deploy non-pull request commits to the master branch
   if [[ "$TRAVIS_PULL_REQUEST" = false ]] && [[ "$TRAVIS_BRANCH" = master || ! -z "$TRAVIS_TAG" ]]; then
-    mvn clean deploy
+    mvn clean deploy --settings maven-settings.xml
   else
     # otherwise, just run test suite
-    mvn clean verify
+    mvn clean verify --settings maven-settings.xml
   fi
 
+# Secure envs are OSSRH_JIRA_USERNAME, OSSRH_JIRA_PASSWORD, GPG_KEY_NAME, GPG_PASSPHRASE
 env:
   global:
-    # encrypted AWS access/secret keys to allow automated deployment to the Conveyal Maven repo on S3
-    - secure: "hCLC9L5ZIL6LyK96zefZOiY8Y35q1JX43z7uHRbh8Fx9Ru7KFRCQDgKZQsiko/JeAP8vMheeZpf/RIgeknKGkrIE5kmuEz3z55mGcgrgvpMgKvgKTdpQE/IcyAmBqssZweFzopVA9SGm8euRz3tJRJt66wz8lA5fSyRL6SQuZdc="
-    - secure: "as8h+4hMwPbcP/9Bpa/l20NFVXjKm2SAWFa3KmfNA60OXXTpqooEAN2jNxqvWzKXbaiL/iAfE/8DV0m0jikn38r8gDBbQlMVlEo0CXCKUbG1T6Wv9YgnP9qbA0OG8HZ3rYDAOtSgjFh9PN/FIEfY82AR/CdSvNN/Jt2ZLtR1wcE="
+    - secure: "eEDwPdu2gkTjuPlwjsrEd+zrbb9IRxFdMB509kKAsoMfk7pWmOjosBWmqvFj/pxo9i4PCgHbtH5aG2tYJmwPv8tU+nAoyF4t2KvpMnfzUnInQZHH0/I9dyQXoEllYH6NYI7FWVhDIfiXOlHIuB/177Yyft5FSq6cJU7ltxQf6ZU="
+    - secure: "dV9lcAxL/YVY3PCBhD/86Rk1Rj/2MTuifUkq+FAyxvJGkQMuRQfl5R3De96L6MUCPJ3kEeL882fiLtIenvpvtL5LGSkMNjnhBdPo3mlN0mvMSITcYcX4B3nDWzBNEDSeYLgyI+uehM0NQRK15QvRKmuOm6KqcQRXPm588o68XHQ="
+    - secure: "HF9LLmyQOzfHtWOc9xbBVwjvVGOujluLVgBqU0iMzqltXgYcB4HvFsRAf47IaZ+37Vv3PoN/UT6Lt0LiTzjSvm01PNpFep6nHeLcy4OWQ1tincn+ZsXEFk5aU5mjQPWhp1u8ao9BhwBZ29xwpef/ri2W0kfxDKHTNqNfnJrgIlE="
+    - secure: "yE+XZkqr3PDYbJJ1NMT9mlLxEMF81BZWsJrxR9kzHpToAQwfLeH7ib03mYAtgSwW+nAUqsnkO7twMhq81UHUYLKHAuhCKGtoRomEPoGLaj+CUXNXrKjhMfmis7+W0vwd+0onk8KvDWR62wYlmVRbmo6c/LodRiV+z25vEVe79JA="
 
 # If sudo is disabled, CI runs on container based infrastructure (allows caching &c.)
 sudo: false
