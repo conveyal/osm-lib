@@ -181,6 +181,7 @@ public class OSM implements OSMEntitySource, OSMEntitySink {
                 // FIXME this takes two minutes on NL OSM. We should probably save the intersections in a MapDB table.
                 LOG.info("Detecting intersections...");
                 for (Way way : ways.values()) {
+                    if (way.hasTag("building")) continue;
                     for (long nodeId : way.nodes) {
                         if (referencedNodes.contains(nodeId)) {
                             intersectionNodes.add(nodeId);
@@ -350,7 +351,7 @@ public class OSM implements OSMEntitySource, OSMEntitySink {
         this.ways.put(id, way);
 
         // Optionally track which nodes are referenced by more than one way.
-        if (intersectionDetection) {
+        if (intersectionDetection && !way.hasTag("building")) {
             for (long nodeId : way.nodes) {
                 if (referencedNodes.contains(nodeId)) {
                     intersectionNodes.add(nodeId);
