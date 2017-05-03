@@ -125,7 +125,7 @@
     </dependency>
     <dependency>
       <groupId>org.roaringbitmap</groupId>
-      <artifactId>roaringbitmap</artifactId>
+      <artifactId>RoaringBitmap</artifactId>
       <version>0.6.43</version>
     </dependency>
   </dependencies>
