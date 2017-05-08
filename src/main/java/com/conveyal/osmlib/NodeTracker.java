@@ -18,7 +18,7 @@ import java.util.Map;
  * To save space, this uses RoaringBitmaps. RoaringBitmaps currently only support 32 bit keys
  * so we use multiple RoaringBitmaps containing the low 32 bits, stored in a map from the high
  * 32 bits to a roaringbitmap. Since the OSM IDs are concentrated towards the bottom of the long
- * space (i.e. they only need, so far, one more than an int provides), only a few blocks are used.
+ * space (i.e. they only need, so far, one more bit than an int provides), only a few blocks are used.
  */
 public class NodeTracker {
     private static final Logger LOG = LoggerFactory.getLogger(NodeTracker.class);
@@ -29,11 +29,14 @@ public class NodeTracker {
         int high = highIndex(x);
         int low = lowIndex(x);
 
-        if (!blocks.containsKey(high)) {
-            blocks.put(high, new RoaringBitmap());
-            LOG.debug("New block, {} blocks now", blocks.size());
+        RoaringBitmap block = blocks.get(high);
+
+        if (block == null) {
+            block = new RoaringBitmap();
+            blocks.put(high, block);
         }
-        blocks.get(high).add(low);
+
+        block.add(low);
     }
 
     public boolean contains(long x) {
@@ -59,6 +62,8 @@ public class NodeTracker {
     }
 
     private static int lowIndex (long key) {
+        // this truncation can change the sign of the int, but roaringbitmaps treats ints as unsigned, so that's
+        // not a problem.
         return (int) key;
     }
 
