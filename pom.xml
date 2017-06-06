@@ -213,5 +213,12 @@
       <artifactId>RoaringBitmap</artifactId>
       <version>0.6.43</version>
     </dependency>
+    <!-- Relational database support -->
+    <dependency>
+      <groupId>org.postgresql</groupId>
+      <artifactId>postgresql</artifactId>
+      <version>42.0.0</version>
+    </dependency>
+
   </dependencies>
 </project>

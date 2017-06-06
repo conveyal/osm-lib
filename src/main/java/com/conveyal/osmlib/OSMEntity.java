@@ -4,6 +4,7 @@ import com.beust.jcommander.internal.Lists;
 
 import java.io.Serializable;
 import java.util.List;
+import java.util.stream.Collectors;
 
 public abstract class OSMEntity implements Serializable {
 
@@ -97,5 +98,9 @@ public abstract class OSMEntity implements Serializable {
 
     /** This feels strange because we're using Enums to duplicate Java type data (Node.class) */
     public abstract Type getType();
-    
+
+    public String getTagsAsString () {
+        if (tags == null) return "";
+        return String.join(";", tags.stream().map(OSMEntity.Tag::toString).collect(Collectors.toList()));
+    }
 }
