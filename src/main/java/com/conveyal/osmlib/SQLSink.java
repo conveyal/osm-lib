@@ -116,12 +116,12 @@ public class SQLSink implements OSMEntitySink {
             connection.commit();
             LOG.info("Indexing...");
             Statement statement = connection.createStatement();
-            statement.execute("alter table nodes add primary key (id)");
-            statement.execute("alter table ways add primary key (id)");
-            statement.execute("create index on nodes (lat)");
-            statement.execute("create index on nodes (lon)");
-            statement.execute("create index on way_nodes (way_id)");
-            statement.execute("create index on way_nodes (node_id)");
+            statement.execute("create index nodes_id on nodes (id)");
+            statement.execute("create index nodes_lat on nodes (lat)");
+            statement.execute("create index nodes_lon on nodes (lon)");
+            statement.execute("create index ways_id on ways (id)");
+            statement.execute("create index way_nodes_way_id on way_nodes (way_id)");
+            statement.execute("create index way_nodes_node_id on way_nodes (node_id)");
             connection.commit();
         } catch (SQLException ex) {
             throw new RuntimeException(ex);
@@ -130,6 +130,8 @@ public class SQLSink implements OSMEntitySink {
 
     public static void main (String[] args) {
         final String inputPath = "/Users/abyrd/r5/pdx/portland_oregon.osm.pbf";
+        final String SQLITE_FILE_URL = "jdbc:sqlite:/Users/abyrd/test-db";
+        final String POSTGRES_LOCAL_URL = "jdbc:postgresql://localhost/catalogue";
         try {
             long startTime = System.currentTimeMillis();
             OSMEntitySource source = OSMEntitySource.forFile(inputPath);
@@ -139,7 +141,7 @@ public class SQLSink implements OSMEntitySink {
             //////////////////////
             startTime = System.currentTimeMillis();
             source = OSMEntitySource.forFile(inputPath);
-            sink = new SQLSink("jdbc:postgresql://localhost/vex-osm");
+            sink = new SQLSink(POSTGRES_LOCAL_URL);
             source.copyTo(sink);
             LOG.info("Total run time: {} sec", (System.currentTimeMillis() - startTime)/1000D);
         } catch (IOException ex) {
