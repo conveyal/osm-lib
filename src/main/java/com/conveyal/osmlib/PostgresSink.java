@@ -50,7 +50,6 @@ public class PostgresSink implements OSMEntitySink {
             connection.setAutoCommit(false);
             Statement statement = connection.createStatement();
             statement.execute("drop table if exists updates");
-            statement.execute("drop table if exists way_bins");
             statement.execute("drop table if exists nodes");
             statement.execute("drop table if exists ways");
             statement.execute("drop table if exists relations");
@@ -96,14 +95,15 @@ public class PostgresSink implements OSMEntitySink {
                     copyManager.copyIn(copySql, pipedInputStream, 1024 * 1024);
                 } catch (Exception ex) {
                     throw new RuntimeException("Thread managing SQL COPY to Postgres database failed.", ex);
+                    // FIXME this can invisibly kill the thread - somehow signal the writer that it's dead or just exit the program.
                 } finally {
                     try {
                         if (connection != null) {
-                            connection.commit();
+                            connection.rollback();
                             connection.close();
                         }
                     } catch (SQLException ex) {
-                        throw new RuntimeException("Unable to commit after COPY into Postgres.", ex);
+                        throw new RuntimeException("Unable to rollback after COPY into Postgres failed.", ex);
                     }
                     safeClose(pipedInputStream);
                 }
@@ -178,7 +178,7 @@ public class PostgresSink implements OSMEntitySink {
         wayPrintStream.print('}');
         wayPrintStream.print('\n');
         nInserted += 1;
-        if (nInserted % 10000 == 0) LOG.info("Inserted {} ways", human(nInserted));
+        if (nInserted % 100000 == 0) LOG.info("Inserted {} ways", human(nInserted));
     }
 
     @Override
@@ -212,7 +212,7 @@ public class PostgresSink implements OSMEntitySink {
             relationMemberPrintStream.print('\n');
         }
         nInserted += 1;
-        if (nInserted % 10000 == 0) LOG.info("Inserted {} relations", human(nInserted));
+        if (nInserted % 100000 == 0) LOG.info("Inserted {} relations", human(nInserted));
         // TODO IMPLEMENT RELATIONS
     }
 
@@ -226,14 +226,18 @@ public class PostgresSink implements OSMEntitySink {
         try {
             LOG.info("Indexing...");
             Connection connection = DriverManager.getConnection(this.databaseUrl);
-            connection.setAutoCommit(false);
+            connection.setAutoCommit(true);
             Statement statement = connection.createStatement();
             statement.execute("create index nodes_id on nodes (node_id)");
 //            statement.execute("create index nodes_lat on nodes (lat)");
 //            statement.execute("create index nodes_lon on nodes (lon)");
             statement.execute("create index ways_id on ways (way_id)");
+            statement.execute("drop table if exists way_bins");
+            // TODO actually we don't even need bins, just associate a coordinate with each way
             statement.execute("create table way_bins as select way_id, floor(lat * 100) as y, floor(cos(radians(lat)) * lon * 100) as x from (select way_id, nodes[array_length(nodes, 1)/2] as node_id from ways) W join nodes using (node_id)");
-            connection.commit();
+            // TODO need to index way_bins x and y, maybe just integrate it into ways table
+            // select way_id, unnest(nodes) from way_bins join ways using (way_id) where x=595 and y=5352;
+            //connection.commit();
             connection.close();
         } catch (SQLException ex) {
             throw new RuntimeException(ex);
@@ -301,9 +305,11 @@ public class PostgresSink implements OSMEntitySink {
 
     private static String clean (String input) {
         String filtered = pattern.matcher(input).replaceAll(" ");
-        if (!filtered.equals(input)) {
-            LOG.warn("Stripped tabs, CR, LF, and/or backslash out of string " + filtered);
-        }
+//        if (!filtered.equals(input)) {
+//            LOG.warn("Stripped tabs, CR, LF, and/or backslash out of string " + filtered);
+//        }
+        // TODO maybe we should be returning the NULL string (\N) for empty strings.
+        // Are we storing lots of separate empty strings rather than nulls?
         return filtered;
     }
 
