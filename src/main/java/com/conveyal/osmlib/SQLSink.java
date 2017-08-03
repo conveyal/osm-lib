@@ -11,10 +11,11 @@ import java.util.stream.Collectors;
 /**
  * Load OSM into a simple SQL schema.
  *
- * Comparing Postgres to MapDB:
- * MapDB 10.7 sec
- * Postgres 77.3 sec (batched prepared inserts, including building indexes)
- * Loading into Postgres using the COPY command could be faster but more complex.
+ * Comparing Postgres to MapDB for Portland Oregon OSM:
+ * MapDB 11 sec
+ * Postgres 90 sec (batched prepared inserts, including building indexes)
+ * Postgres 20 sec (using the COPY command)
+ *
  * MapDB does in fact work well as a temporary cache, we just don't want to persist it and re-open.
  */
 public class SQLSink implements OSMEntitySink {
@@ -131,7 +132,7 @@ public class SQLSink implements OSMEntitySink {
     public static void main (String[] args) {
         final String inputPath = "/Users/abyrd/r5/pdx/portland_oregon.osm.pbf";
         final String SQLITE_FILE_URL = "jdbc:sqlite:/Users/abyrd/test-db";
-        final String POSTGRES_LOCAL_URL = "jdbc:postgresql://localhost/catalogue";
+        final String POSTGRES_LOCAL_URL = "jdbc:postgresql://localhost/osm";
         try {
             long startTime = System.currentTimeMillis();
             OSMEntitySource source = OSMEntitySource.forFile(inputPath);

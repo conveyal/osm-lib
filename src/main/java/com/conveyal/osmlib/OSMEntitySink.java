@@ -26,11 +26,20 @@ public interface OSMEntitySink {
     public void writeEnd() throws IOException;
 
     public static OSMEntitySink forFile (String path) {
-        try {
-            OutputStream outputStream = new FileOutputStream(path);
-            return forStream(path, outputStream);
-        } catch (FileNotFoundException e) {
-            throw new RuntimeException(e);
+        if (path.startsWith("jdbc:postgresql://")) {
+            // Postgres-specific SQL COPY loader.
+            return new PostgresSink(path);
+        } else if (path.startsWith("jdbc:")) {
+            // Generic JDBC batched insert loader.
+            return new SQLSink(path);
+        } else {
+            // This doesn't look like a database, treat the string as a filename.
+            try {
+                OutputStream outputStream = new FileOutputStream(path);
+                return forStream(path, outputStream);
+            } catch (FileNotFoundException e) {
+                throw new RuntimeException(e);
+            }
         }
     }
 
