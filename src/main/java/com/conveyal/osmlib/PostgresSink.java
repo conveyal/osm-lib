@@ -260,15 +260,22 @@ public class PostgresSink implements OSMEntitySink {
     }
 
 
-    final static Pattern pattern = Pattern.compile("\t|\n|\r");
+    // We need to filter out backslashes from our strings, as well as delimiteres.
+    // See https://www.postgresql.org/docs/9.6/static/sql-copy.html :
+    // "Backslash characters (\) can be used in the COPY data to quote data characters that might otherwise be taken as
+    // row or column delimiters. In particular, the following characters must be preceded by a backslash if they appear
+    // as part of a column value: backslash itself, newline, carriage return, and the current delimiter character."
+    // Note that in this regex, the four backslashes mean one literal backslash, i.e. (tab or CR or LF or backslash)
+    final static Pattern pattern = Pattern.compile("\t|\n|\r|\\\\");
 
     /**
-     * Remove tabs and linefeeds.
+     * Remove tabs and linefeeds. They are allowed in tag values but will cause us grief so we're just
+     * filtering them out of everything for now.
      * Horribly, a Java string can contain characters that can't actually be converted to UTF-8,
      * so we need to encode and decode the string to detect those, because they'll confuse Postgres.
      */
-    private static String clean (String input) {
-        String filtered = pattern.matcher(input).replaceAll("");
+    private static String complicatedClean (String input) {
+        String filtered = pattern.matcher(input).replaceAll(" ");
         if (!filtered.equals(input)) {
             LOG.warn("Stripped tabs and linefeeds out of string: " + input);
         }
@@ -285,7 +292,17 @@ public class PostgresSink implements OSMEntitySink {
                 LOG.error("Failed round-trip through UTF-8: " + filtered);
                 filtered = "BAD_STRING";
             }
+        }
+        if (!filtered.equals(input)) {
             LOG.info("Cleaned string is now: " + filtered);
+        }
+        return filtered;
+    }
+
+    private static String clean (String input) {
+        String filtered = pattern.matcher(input).replaceAll(" ");
+        if (!filtered.equals(input)) {
+            LOG.warn("Stripped tabs, CR, LF, and/or backslash out of string.");
         }
         return filtered;
     }
