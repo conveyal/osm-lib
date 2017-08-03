@@ -6,6 +6,9 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.*;
+import java.nio.ByteBuffer;
+import java.nio.CharBuffer;
+import java.nio.charset.*;
 import java.sql.*;
 import java.util.Arrays;
 import java.util.regex.Matcher;
@@ -246,15 +249,9 @@ public class PostgresSink implements OSMEntitySink {
         final String databaseUrl = args[1];
         try {
             long startTime = System.currentTimeMillis();
-            OSMEntitySource source = OSMEntitySource.forFile(inputPath);
-            OSMEntitySink sink = new OSM(null);
-//            source.copyTo(sink);
-            LOG.info("Total run time: {} sec", (System.currentTimeMillis() - startTime)/1000D);
-
-            //////////////////////
             startTime = System.currentTimeMillis();
-            source = OSMEntitySource.forFile(inputPath);
-            sink = OSMEntitySink.forFile(databaseUrl);
+            OSMEntitySource source = OSMEntitySource.forFile(inputPath);
+            OSMEntitySink sink = OSMEntitySink.forFile(databaseUrl);
             source.copyTo(sink);
             LOG.info("Total run time: {} sec", (System.currentTimeMillis() - startTime)/1000D);
         } catch (IOException ex) {
@@ -262,11 +259,30 @@ public class PostgresSink implements OSMEntitySink {
         }
     }
 
+
     final static Pattern pattern = Pattern.compile("\t|\n|\r");
+
     /**
      * Remove tabs and linefeeds.
+     * Horribly, a Java string can contain characters that can't actually be converted to UTF-8,
+     * so we need to encode and decode the string to detect those, because they'll confuse Postgres.
      */
-    private static String clean(String input) {
+    private static String clean (String input) {
+        CharsetEncoder encoder = StandardCharsets.UTF_8.newEncoder();
+        CharBuffer charBuffer = CharBuffer.wrap(input);
+        if (!encoder.canEncode(charBuffer)) {
+            LOG.error("String contains something that can't be coded as UTF-8: " + input);
+            try {
+                encoder.onMalformedInput(CodingErrorAction.REPLACE);
+                encoder.onUnmappableCharacter(CodingErrorAction.REPLACE);
+                CharsetDecoder decoder = StandardCharsets.UTF_8.newDecoder();
+                input = String.valueOf(decoder.decode(encoder.encode(charBuffer)));
+            } catch(CharacterCodingException e) {
+                LOG.error("Failed round-trip through UTF-8: " + input);
+                input = "BAD_UNICODE";
+            }
+            LOG.info("Cleaned string is now: " + input);
+        }
         return pattern.matcher(input).replaceAll("");
     }
 
