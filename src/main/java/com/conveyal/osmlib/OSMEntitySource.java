@@ -28,9 +28,14 @@ public interface OSMEntitySource {
 
     public static OSMEntitySource forFile (String path) {
         try {
-            InputStream inputStream = new FileInputStream(path);
+            InputStream inputStream;
+            if (path.startsWith("http://") || path.startsWith("https://")) {
+                inputStream = new URL(path).openStream();
+            } else {
+                inputStream = new FileInputStream(path);
+            }
             return forStream(path, inputStream);
-        } catch (FileNotFoundException e) {
+        } catch (Exception e) {
             throw new RuntimeException(e);
         }
     }

@@ -8,6 +8,8 @@ import org.slf4j.LoggerFactory;
 import java.io.*;
 import java.sql.*;
 import java.util.Arrays;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import java.util.stream.Collector;
 import java.util.stream.Collectors;
 
@@ -142,10 +144,10 @@ public class PostgresSink implements OSMEntitySink {
         nodePrintStream.print('\t');
         nodePrintStream.print(node.getLon());
         nodePrintStream.print('\t');
-        nodePrintStream.print(node.getTagsAsString());
+        nodePrintStream.print(clean(node.getTagsAsString()));
         nodePrintStream.print('\n');
         nInserted += 1;
-        if (nInserted % 100000 == 0) LOG.info("Inserted {} nodes", nInserted);
+        if (nInserted % 100000 == 0) LOG.info("Inserted {} nodes", human(nInserted));
     }
 
     @Override
@@ -183,7 +185,7 @@ public class PostgresSink implements OSMEntitySink {
 //            wayNodePrintStream.print('\n');
 //        }
         nInserted += 1;
-        if (nInserted % 10000 == 0) LOG.info("Inserted {} ways", nInserted);
+        if (nInserted % 10000 == 0) LOG.info("Inserted {} ways", human(nInserted));
     }
 
     @Override
@@ -217,7 +219,7 @@ public class PostgresSink implements OSMEntitySink {
             relationMemberPrintStream.print('\n');
         }
         nInserted += 1;
-        if (nInserted % 10000 == 0) LOG.info("Inserted {} relations", nInserted);
+        if (nInserted % 10000 == 0) LOG.info("Inserted {} relations", human(nInserted));
         // TODO IMPLEMENT RELATIONS
     }
 
@@ -268,6 +270,21 @@ public class PostgresSink implements OSMEntitySink {
         } catch (IOException ex) {
             throw new RuntimeException(ex);
         }
+    }
+
+    final static Pattern pattern = Pattern.compile("\t|\n|\r");
+    /**
+     * Remove tabs and linefeeds.
+     */
+    private static String clean(String input) {
+        return pattern.matcher(input).replaceAll("");
+    }
+
+    public static String human (int n) {
+        if (n >= 1000000000) return String.format("%.1fG", n/1000000000.0);
+        if (n >= 1000000) return String.format("%.1fM", n/1000000.0);
+        if (n >= 1000) return String.format("%dk", n/1000);
+        else return String.format("%d", n);
     }
 
 }
