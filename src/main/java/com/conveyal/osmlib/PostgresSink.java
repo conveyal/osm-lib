@@ -107,7 +107,7 @@ public class PostgresSink implements OSMEntitySink {
                 LOG.info("Finished Postgres COPY into table '{}', thread exiting.", tableName);
             }).start();
             // Replace any existing COPY output stream with the new one.
-            return new PrintStream(pipedOutputStream);
+            return new PrintStream(pipedOutputStream, true, "UTF-8");
         } catch (Exception ex) {
             throw new RuntimeException("Unable to initiate SQL COPY to Postgres server.", ex);
         }
@@ -174,16 +174,6 @@ public class PostgresSink implements OSMEntitySink {
         wayPrintStream.print(Arrays.stream(way.nodes).mapToObj(Long::toString).collect(Collectors.joining(",")));
         wayPrintStream.print('}');
         wayPrintStream.print('\n');
-//        // The nodes making up the way
-//        int seq = 0;
-//        for (long node : way.nodes) {
-//            wayNodePrintStream.print(id);
-//            wayNodePrintStream.print('\t');
-//            wayNodePrintStream.print(seq);
-//            wayNodePrintStream.print('\t');
-//            wayNodePrintStream.print(node);
-//            wayNodePrintStream.print('\n');
-//        }
         nInserted += 1;
         if (nInserted % 10000 == 0) LOG.info("Inserted {} ways", human(nInserted));
     }
