@@ -268,22 +268,26 @@ public class PostgresSink implements OSMEntitySink {
      * so we need to encode and decode the string to detect those, because they'll confuse Postgres.
      */
     private static String clean (String input) {
+        String filtered = pattern.matcher(input).replaceAll("");
+        if (!filtered.equals(input)) {
+            LOG.warn("Stripped tabs and linefeeds out of string: " + input);
+        }
         CharsetEncoder encoder = StandardCharsets.UTF_8.newEncoder();
-        CharBuffer charBuffer = CharBuffer.wrap(input);
+        CharBuffer charBuffer = CharBuffer.wrap(filtered);
         if (!encoder.canEncode(charBuffer)) {
-            LOG.error("String contains something that can't be coded as UTF-8: " + input);
+            LOG.error("String contains something that can't be coded as UTF-8: " + filtered);
             try {
                 encoder.onMalformedInput(CodingErrorAction.REPLACE);
                 encoder.onUnmappableCharacter(CodingErrorAction.REPLACE);
                 CharsetDecoder decoder = StandardCharsets.UTF_8.newDecoder();
-                input = String.valueOf(decoder.decode(encoder.encode(charBuffer)));
+                filtered = String.valueOf(decoder.decode(encoder.encode(charBuffer)));
             } catch(CharacterCodingException e) {
-                LOG.error("Failed round-trip through UTF-8: " + input);
-                input = "BAD_UNICODE";
+                LOG.error("Failed round-trip through UTF-8: " + filtered);
+                filtered = "BAD_STRING";
             }
-            LOG.info("Cleaned string is now: " + input);
+            LOG.info("Cleaned string is now: " + filtered);
         }
-        return pattern.matcher(input).replaceAll("");
+        return filtered;
     }
 
     public static String human (int n) {
