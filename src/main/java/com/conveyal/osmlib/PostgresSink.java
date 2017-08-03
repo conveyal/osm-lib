@@ -169,9 +169,9 @@ public class PostgresSink implements OSMEntitySink {
         // The way itself
         wayPrintStream.print(id);
         wayPrintStream.print('\t');
-        wayPrintStream.print(way.getTagsAsString());
+        wayPrintStream.print(clean(way.getTagsAsString()));
         wayPrintStream.print('\t');
-        // We're storing the nodes in the way as an array
+        // We're storing the nodes in the way as a Postgres array type
         // Try: select id, unnest(nodes) from ways limit 100;
         wayPrintStream.print('{');
         wayPrintStream.print(Arrays.stream(way.nodes).mapToObj(Long::toString).collect(Collectors.joining(",")));
@@ -198,7 +198,7 @@ public class PostgresSink implements OSMEntitySink {
         // The relation itself
         relationPrintStream.print(id);
         relationPrintStream.print('\t');
-        relationPrintStream.print(relation.getTagsAsString());
+        relationPrintStream.print(clean(relation.getTagsAsString()));
         relationPrintStream.print('\n');
         // The relation's members
         for (Relation.Member member : relation.members) {
@@ -208,7 +208,7 @@ public class PostgresSink implements OSMEntitySink {
             relationMemberPrintStream.print('\t');
             relationMemberPrintStream.print(member.id);
             relationMemberPrintStream.print('\t');
-            relationMemberPrintStream.print(member.role);
+            relationMemberPrintStream.print(clean(member.role));
             relationMemberPrintStream.print('\n');
         }
         nInserted += 1;
@@ -302,7 +302,7 @@ public class PostgresSink implements OSMEntitySink {
     private static String clean (String input) {
         String filtered = pattern.matcher(input).replaceAll(" ");
         if (!filtered.equals(input)) {
-            LOG.warn("Stripped tabs, CR, LF, and/or backslash out of string.");
+            LOG.warn("Stripped tabs, CR, LF, and/or backslash out of string " + filtered);
         }
         return filtered;
     }
