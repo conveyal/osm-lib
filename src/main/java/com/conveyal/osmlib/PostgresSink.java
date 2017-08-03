@@ -45,6 +45,7 @@ public class PostgresSink implements OSMEntitySink {
             connection.setAutoCommit(false);
             Statement statement = connection.createStatement();
             statement.execute("drop table if exists updates");
+            statement.execute("drop table if exists way_bins");
             statement.execute("drop table if exists nodes");
             statement.execute("drop table if exists ways");
             statement.execute("drop table if exists relations");
@@ -54,7 +55,7 @@ public class PostgresSink implements OSMEntitySink {
             statement.execute("create table nodes (node_id bigint, lat float(9), lon float(9), tags varchar)");
             statement.execute("create table ways (way_id bigint, tags varchar, nodes bigint array)");
             statement.execute("create table relations (relation_id bigint, tags varchar)");
-            statement.execute("create table relation_members (relation_id bigint, role varchar)");
+            statement.execute("create table relation_members (relation_id bigint, type varchar, member_id bigint, role varchar)");
             connection.commit();
             connection.close();
         } catch (Exception ex) {
@@ -144,7 +145,7 @@ public class PostgresSink implements OSMEntitySink {
         nodePrintStream.print(node.getTagsAsString());
         nodePrintStream.print('\n');
         nInserted += 1;
-        if (nInserted % 100000 == 0) LOG.info("Inserted {}", nInserted);
+        if (nInserted % 100000 == 0) LOG.info("Inserted {} nodes", nInserted);
     }
 
     @Override
@@ -182,7 +183,7 @@ public class PostgresSink implements OSMEntitySink {
 //            wayNodePrintStream.print('\n');
 //        }
         nInserted += 1;
-        if (nInserted % 10000 == 0) LOG.info("Inserted {}", nInserted);
+        if (nInserted % 10000 == 0) LOG.info("Inserted {} ways", nInserted);
     }
 
     @Override
@@ -192,14 +193,31 @@ public class PostgresSink implements OSMEntitySink {
             safeClose(wayPrintStream);
             // Transition to the relations phase on encountering the first relation after ways.
             phase = OSMEntity.Type.RELATION;
-            initiatePostgresCopy("relations");
+            relationPrintStream = initiatePostgresCopy("relations");
+            relationMemberPrintStream = initiatePostgresCopy("relation_members");
             nInserted = 0;
         }
         if (phase != OSMEntity.Type.RELATION) {
             throw new RuntimeException("Postgres module can only be loaded from sources following the standard nodes, ways, relations entity order.");
         }
+        // The relation itself
+        relationPrintStream.print(id);
+        relationPrintStream.print('\t');
+        relationPrintStream.print(relation.getTagsAsString());
+        relationPrintStream.print('\n');
+        // The relation's members
+        for (Relation.Member member : relation.members) {
+            relationMemberPrintStream.print(id);
+            relationMemberPrintStream.print('\t');
+            relationMemberPrintStream.print(member.type);
+            relationMemberPrintStream.print('\t');
+            relationMemberPrintStream.print(member.id);
+            relationMemberPrintStream.print('\t');
+            relationMemberPrintStream.print(member.role);
+            relationMemberPrintStream.print('\n');
+        }
         nInserted += 1;
-        if (nInserted % 10000 == 0) LOG.info("Inserted {}", nInserted);
+        if (nInserted % 10000 == 0) LOG.info("Inserted {} relations", nInserted);
         // TODO IMPLEMENT RELATIONS
     }
 
