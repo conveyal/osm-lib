@@ -227,9 +227,13 @@ public class PostgresSink implements OSMEntitySink {
         }
     }
 
+    /**
+     * Example:
+     * PostgresSink /Users/abyrd/r5/pdx/portland_oregon.osm.pbf  jdbc:postgresql://osm.blah.rds.amazonaws.com:5432/osm?user=USER&password=SECRET
+     */
     public static void main (String[] args) {
-        final String inputPath = "/Users/abyrd/r5/pdx/portland_oregon.osm.pbf";
-        final String POSTGRES_LOCAL_URL = "jdbc:postgresql://localhost/osm";
+        final String inputPath = args[0];
+        final String databaseUrl = args[1];
         try {
             long startTime = System.currentTimeMillis();
             OSMEntitySource source = OSMEntitySource.forFile(inputPath);
@@ -240,7 +244,7 @@ public class PostgresSink implements OSMEntitySink {
             //////////////////////
             startTime = System.currentTimeMillis();
             source = OSMEntitySource.forFile(inputPath);
-            sink = OSMEntitySink.forFile(POSTGRES_LOCAL_URL);
+            sink = OSMEntitySink.forFile(databaseUrl);
             source.copyTo(sink);
             LOG.info("Total run time: {} sec", (System.currentTimeMillis() - startTime)/1000D);
         } catch (IOException ex) {
