@@ -31,7 +31,7 @@ public class PostgresSink implements OSMEntitySink {
     private final String databaseUrl;
     private int nInserted = 0;
 
-    // Keep track of which part of the input we're in. We only support the nodes, ways, relations order.
+    // Keep track of which part of the input we're in. We only support the order nodes, ways, relations.
     private OSMEntity.Type phase = null;
 
     private PrintStream nodePrintStream = null;
@@ -93,20 +93,15 @@ public class PostgresSink implements OSMEntitySink {
                     // Connection pools wrap the Connection objects. Unwrap the Postgres-specific connection interface.
                     CopyManager copyManager = new CopyManager(connection.unwrap(BaseConnection.class));
                     copyManager.copyIn(copySql, pipedInputStream, 1024 * 1024);
+                    connection.commit();
+                    connection.close();
                 } catch (Exception ex) {
-                    throw new RuntimeException("Thread managing SQL COPY to Postgres database failed.", ex);
+                    attemptRollback(connection);
                     // FIXME this can invisibly kill the thread - somehow signal the writer that it's dead or just exit the program.
-                } finally {
-                    try {
-                        if (connection != null) {
-                            connection.rollback();
-                            connection.close();
-                        }
-                    } catch (SQLException ex) {
-                        throw new RuntimeException("Unable to rollback after COPY into Postgres failed.", ex);
-                    }
-                    safeClose(pipedInputStream);
+                    LOG.error("Thread managing SQL COPY to Postgres database failed.", ex);
+                    System.exit(-1);
                 }
+                safeClose(pipedInputStream);
                 LOG.info("Finished Postgres COPY into table '{}', thread exiting.", tableName);
             }).start();
             // Replace any existing COPY output stream with the new one.
@@ -116,9 +111,21 @@ public class PostgresSink implements OSMEntitySink {
         }
     }
 
+    private static void attemptRollback (Connection connection) {
+        if (connection != null) {
+            try {
+                connection.rollback();
+                connection.close();
+            } catch (SQLException e) {
+                LOG.error("Rollback failed after COPY thread failed.");
+                e.printStackTrace();
+            }
+        }
+    }
+
     /**
-     * Handle the fact that when we want to close streams in a finally clause, they may be null or closing them may
-     * itself cause an exception.
+     * Handle the fact that when we want to close a stream in a finally clause, it may be null or closing it may
+     * cascade another exception.
      */
     private void safeClose (Closeable closeable) {
         if (closeable != null) {
@@ -213,7 +220,6 @@ public class PostgresSink implements OSMEntitySink {
         }
         nInserted += 1;
         if (nInserted % 100000 == 0) LOG.info("Inserted {} relations", human(nInserted));
-        // TODO IMPLEMENT RELATIONS
     }
 
     @Override
@@ -224,20 +230,17 @@ public class PostgresSink implements OSMEntitySink {
         safeClose(relationPrintStream);
         safeClose(relationMemberPrintStream);
         try {
-            LOG.info("Indexing...");
             Connection connection = DriverManager.getConnection(this.databaseUrl);
-            connection.setAutoCommit(true);
+            connection.setAutoCommit(false);
             Statement statement = connection.createStatement();
-            statement.execute("create index nodes_id on nodes (node_id)");
-//            statement.execute("create index nodes_lat on nodes (lat)");
-//            statement.execute("create index nodes_lon on nodes (lon)");
-            statement.execute("create index ways_id on ways (way_id)");
-            statement.execute("drop table if exists way_bins");
-            // TODO actually we don't even need bins, just associate a coordinate with each way
-            statement.execute("create table way_bins as select way_id, floor(lat * 100) as y, floor(cos(radians(lat)) * lon * 100) as x from (select way_id, nodes[array_length(nodes, 1)/2] as node_id from ways) W join nodes using (node_id)");
-            // TODO need to index way_bins x and y, maybe just integrate it into ways table
-            // select way_id, unnest(nodes) from way_bins join ways using (way_id) where x=595 and y=5352;
-            //connection.commit();
+            LOG.info("Indexing nodes by id...");
+            statement.execute("create index on nodes(node_id)");
+            LOG.info("Assigning representative coordinates to ways...");
+            statement.execute("alter table ways add column rep_lat float(9), add column rep_lon float(9)");
+            statement.execute("update ways set (rep_lat, rep_lon) = (select lat, lon from nodes where nodes.node_id = nodes[array_length(nodes, 1)/2])");
+            LOG.info("Indexing representative coordinates of ways...");
+            statement.execute("create index on ways(rep_lat, rep_lon)");
+            connection.commit();
             connection.close();
         } catch (SQLException ex) {
             throw new RuntimeException(ex);
@@ -275,34 +278,7 @@ public class PostgresSink implements OSMEntitySink {
     /**
      * Remove tabs and linefeeds. They are allowed in tag values but will cause us grief so we're just
      * filtering them out of everything for now.
-     * Horribly, a Java string can contain characters that can't actually be converted to UTF-8,
-     * so we need to encode and decode the string to detect those, because they'll confuse Postgres.
      */
-    private static String complicatedClean (String input) {
-        String filtered = pattern.matcher(input).replaceAll(" ");
-        if (!filtered.equals(input)) {
-            LOG.warn("Stripped tabs and linefeeds out of string: " + input);
-        }
-        CharsetEncoder encoder = StandardCharsets.UTF_8.newEncoder();
-        CharBuffer charBuffer = CharBuffer.wrap(filtered);
-        if (!encoder.canEncode(charBuffer)) {
-            LOG.error("String contains something that can't be coded as UTF-8: " + filtered);
-            try {
-                encoder.onMalformedInput(CodingErrorAction.REPLACE);
-                encoder.onUnmappableCharacter(CodingErrorAction.REPLACE);
-                CharsetDecoder decoder = StandardCharsets.UTF_8.newDecoder();
-                filtered = String.valueOf(decoder.decode(encoder.encode(charBuffer)));
-            } catch(CharacterCodingException e) {
-                LOG.error("Failed round-trip through UTF-8: " + filtered);
-                filtered = "BAD_STRING";
-            }
-        }
-        if (!filtered.equals(input)) {
-            LOG.info("Cleaned string is now: " + filtered);
-        }
-        return filtered;
-    }
-
     private static String clean (String input) {
         String filtered = pattern.matcher(input).replaceAll(" ");
 //        if (!filtered.equals(input)) {
@@ -313,6 +289,9 @@ public class PostgresSink implements OSMEntitySink {
         return filtered;
     }
 
+    /**
+     * Return a human-readable string with SI suffixes for the given number.
+     */
     public static String human (int n) {
         if (n >= 1000000000) return String.format("%.1fG", n/1000000000.0);
         if (n >= 1000000) return String.format("%.1fM", n/1000000.0);
