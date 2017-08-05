@@ -31,6 +31,8 @@ public interface OSMEntitySource {
             InputStream inputStream;
             if (path.startsWith("http://") || path.startsWith("https://")) {
                 inputStream = new URL(path).openStream();
+            } else if (path.startsWith("jdbc:")){
+                return new PostgresOSMSource(path);
             } else {
                 inputStream = new FileInputStream(path);
             }
