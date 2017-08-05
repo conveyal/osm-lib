@@ -224,17 +224,25 @@ public class PostgresSink implements OSMEntitySink {
 
     @Override
     public void writeEnd() throws IOException {
-        // In case any transitions did not occur (a block of entities was missing) close all PrintStreams.
+        // In case any transitions did not occur (an entire block of entities was missing) close all PrintStreams.
         safeClose(nodePrintStream);
         safeClose(wayPrintStream);
         safeClose(relationPrintStream);
         safeClose(relationMemberPrintStream);
+        // FIXME race condition here - what if one of the threads has not committed its transaction.
+        // We should really keep references to the threads and join() one by one.
         try {
             Connection connection = DriverManager.getConnection(this.databaseUrl);
             connection.setAutoCommit(false);
             Statement statement = connection.createStatement();
-            LOG.info("Indexing nodes by id...");
-            statement.execute("create index on nodes(node_id)");
+            LOG.info("Adding node primary key...");
+            // statement.execute("create index on nodes(node_id)");
+            statement.execute("alter table nodes add primary key (node_id)");
+            LOG.info("Adding way primary key...");
+            statement.execute("alter table ways add primary key (way_id)");
+            // Extracting nodes using an index on their coordinates seems much faster than joining the ways to the nodes and extracting all referenced nodes.
+            // LOG.info("Indexing coordinates of nodes...");
+            // statement.execute("create index on nodes(lat, lon)");
             LOG.info("Assigning representative coordinates to ways...");
             statement.execute("alter table ways add column rep_lat float(9), add column rep_lon float(9)");
             statement.execute("update ways set (rep_lat, rep_lon) = (select lat, lon from nodes where nodes.node_id = nodes[array_length(nodes, 1)/2])");
@@ -267,12 +275,14 @@ public class PostgresSink implements OSMEntitySink {
     }
 
 
-    // We need to filter out backslashes from our strings, as well as delimiteres.
-    // See https://www.postgresql.org/docs/9.6/static/sql-copy.html :
-    // "Backslash characters (\) can be used in the COPY data to quote data characters that might otherwise be taken as
-    // row or column delimiters. In particular, the following characters must be preceded by a backslash if they appear
-    // as part of a column value: backslash itself, newline, carriage return, and the current delimiter character."
-    // Note that in this regex, the four backslashes mean one literal backslash, i.e. (tab or CR or LF or backslash)
+    /**
+     * We need to filter out backslashes from our strings, as well as delimiters.
+     * See https://www.postgresql.org/docs/9.6/static/sql-copy.html :
+     * "Backslash characters (\) can be used in the COPY data to quote data characters that might otherwise be taken as
+     * row or column delimiters. In particular, the following characters must be preceded by a backslash if they appear
+     * as part of a column value: backslash itself, newline, carriage return, and the current delimiter character."
+     * Note that in this regex, the four backslashes mean one literal backslash, i.e. (tab or CR or LF or backslash)
+     */
     final static Pattern pattern = Pattern.compile("\t|\n|\r|\\\\");
 
     /**
@@ -281,17 +291,11 @@ public class PostgresSink implements OSMEntitySink {
      */
     private static String clean (String input) {
         String filtered = pattern.matcher(input).replaceAll(" ");
-//        if (!filtered.equals(input)) {
-//            LOG.warn("Stripped tabs, CR, LF, and/or backslash out of string " + filtered);
-//        }
-        // TODO maybe we should be returning the NULL string (\N) for empty strings.
-        // Are we storing lots of separate empty strings rather than nulls?
+        // if (!filtered.equals(input)) LOG.warn("Stripped tabs, CR, LF, and/or backslash out of string " + filtered);
         return filtered;
     }
 
-    /**
-     * Return a human-readable string with SI suffixes for the given number.
-     */
+    /** Return a human-readable string with SI suffixes for the given number. */
     public static String human (int n) {
         if (n >= 1000000000) return String.format("%.1fG", n/1000000000.0);
         if (n >= 1000000) return String.format("%.1fM", n/1000000.0);
