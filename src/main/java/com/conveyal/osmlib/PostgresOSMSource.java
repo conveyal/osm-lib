@@ -94,7 +94,7 @@ public class PostgresOSMSource implements OSMEntitySource {
         // You can see the difference between the two, that the nodes extend outside the bounding box in version A.
         // Adding the distinct keyword here lets the DB server do the filtering, but may be problematic on larger extracts.
         final String sqlA = "select node_id, lat, lon, tags from" +
-                "(select unnest(nodes) as node_id from ways " +
+                "(select distinct unnest(nodes) as node_id from ways " +
                 "where rep_lat > ? and rep_lat < ? and rep_lon > ? and rep_lon < ?)" +
                 "included_nodes join nodes using (node_id)";
         final String sqlB = "select node_id, lat, lon, tags from nodes where " +
@@ -105,7 +105,7 @@ public class PostgresOSMSource implements OSMEntitySource {
         preparedStatement.setDouble(3, minLon);
         preparedStatement.setDouble(4, maxLon);
         // Configure the statement to stream results back with a cursor. TODO check that this actually helps.
-        //preparedStatement.setFetchSize(500);
+        preparedStatement.setFetchSize(500);
         preparedStatement.execute();
         ResultSet resultSet = preparedStatement.getResultSet();
         LOG.info("Begin node iteration");
@@ -126,7 +126,7 @@ public class PostgresOSMSource implements OSMEntitySource {
     }
 
     private void processWays () throws Exception {
-        final String sql = "select distinct way_id, tags, nodes " +
+        final String sql = "select way_id, tags, nodes " +
                 "from ways " +
                 "where rep_lat > ? and rep_lat < ? and rep_lon > ? and rep_lon < ?";
         final String sql2 = "select way_id, ways.tags, nodes from ways, nodes where nodes.node_id = ways.nodes[1] " +
