@@ -96,9 +96,10 @@ public class PostgresSink implements OSMEntitySink {
                     connection.commit();
                     connection.close();
                 } catch (Exception ex) {
-                    attemptRollback(connection);
                     // FIXME this can invisibly kill the thread - somehow signal the writer that it's dead or just exit the program.
-                    LOG.error("Thread managing SQL COPY to Postgres database failed.", ex);
+                    LOG.error("Thread managing SQL COPY to Postgres database failed: " + ex.toString());
+                    ex.printStackTrace();
+                    attemptRollback(connection);
                     System.exit(-1);
                 }
                 safeClose(pipedInputStream);
@@ -249,6 +250,7 @@ public class PostgresSink implements OSMEntitySink {
             LOG.info("Indexing representative coordinates of ways...");
             statement.execute("create index on ways(rep_lat, rep_lon)");
             connection.commit();
+            // We might want to request an "analyze" here.
             connection.close();
         } catch (SQLException ex) {
             throw new RuntimeException(ex);

@@ -224,5 +224,11 @@
       <artifactId>sqlite-jdbc</artifactId>
       <version>3.16.1</version>
     </dependency>
+    <!-- Database connection pooling, implements interfaces in JDBC -->
+    <dependency>
+      <groupId>org.apache.commons</groupId>
+      <artifactId>commons-dbcp2</artifactId>
+      <version>2.1.1</version>
+    </dependency>
   </dependencies>
 </project>

@@ -13,6 +13,7 @@ import org.mapdb.Fun.Tuple3;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import javax.sql.DataSource;
 import java.awt.font.FontRenderContext;
 import java.io.IOException;
 import java.sql.*;
@@ -21,7 +22,10 @@ import java.util.NavigableSet;
 import java.util.Set;
 import java.util.stream.Collectors;
 
-/** An OSM source that pulls OSM entities out of a Postgres database, within a geographic window. */
+/**
+ * An OSM source that pulls OSM entities out of a Postgres database, within a geographic window.
+ * NOT threadsafe or re-entrant. Make a new instance for each thread or nested operation.
+ */
 public class PostgresOSMSource implements OSMEntitySource {
 
     protected static final Logger LOG = LoggerFactory.getLogger(PostgresOSMSource.class);
@@ -30,18 +34,24 @@ public class PostgresOSMSource implements OSMEntitySource {
 
     private String jdbcUrl = null;
 
+    private DataSource dataSource;
+
     private Connection connection;
 
     private OSMEntitySink sink;
 
     // Avoid writing out shared/intersection nodes more than once.
-    // FIXME we should do this with an SQL "unique" constraint
+    // We are currently doing this with an SQL "unique" constraint
     private NodeTracker nodesSeen = new NodeTracker();
 
     private TLongSet relationsSeen = new TLongHashSet();
 
     public PostgresOSMSource (String jdbcUrl) {
         this.jdbcUrl = jdbcUrl;
+    }
+
+    public PostgresOSMSource (DataSource dataSource) {
+        this.dataSource = dataSource;
     }
 
     public void setBoundingBox(double minLat, double minLon, double maxLat, double maxLon) {
@@ -54,13 +64,16 @@ public class PostgresOSMSource implements OSMEntitySource {
         this.maxLon = maxLon;
     }
 
-
     public void copyTo (OSMEntitySink sink) {
         this.sink = sink;
         try {
-            connection = DriverManager.getConnection(jdbcUrl);
-            connection.setReadOnly(true);
-            connection.setAutoCommit(false);
+            if (dataSource == null) {
+                connection = DriverManager.getConnection(jdbcUrl);
+                connection.setReadOnly(true);
+                connection.setAutoCommit(false);
+            } else {
+                connection = dataSource.getConnection();
+            }
             sink.writeBegin();
             LOG.info("Reading nodes from Postgres...");
             processNodes();
@@ -77,8 +90,9 @@ public class PostgresOSMSource implements OSMEntitySource {
 
     private void processNodes () throws Exception {
         // A primary key (unique index) on nodes makes version A reasonably fast.
-        // If you have just a normal index, it is significantly slower than extracting the nodes with a lat,lon index.
+        // If you have just a normal index, it is noticeably slower than extracting the nodes with a lat,lon index.
         // You can see the difference between the two, that the nodes extend outside the bounding box in version A.
+        // Adding the distinct keyword here lets the DB server do the filtering, but may be problematic on larger extracts.
         final String sqlA = "select node_id, lat, lon, tags from" +
                 "(select unnest(nodes) as node_id from ways " +
                 "where rep_lat > ? and rep_lat < ? and rep_lon > ? and rep_lon < ?)" +
@@ -90,20 +104,20 @@ public class PostgresOSMSource implements OSMEntitySource {
         preparedStatement.setDouble(2, maxLat);
         preparedStatement.setDouble(3, minLon);
         preparedStatement.setDouble(4, maxLon);
-        // Configure the statement to stream results back with a cursor
-        preparedStatement.setFetchSize(500);
+        // Configure the statement to stream results back with a cursor. TODO check that this actually helps.
+        //preparedStatement.setFetchSize(500);
         preparedStatement.execute();
         ResultSet resultSet = preparedStatement.getResultSet();
         LOG.info("Begin node iteration");
         while (resultSet.next()) {
             // Columns were specified in select, so we know their (one-based) sequence.
             long node_id = resultSet.getLong(1);
-            if (nodesSeen.contains(node_id)) continue;
+            // if (nodesSeen.contains(node_id)) continue;
             Node node = new Node();
             node.setLatLon(resultSet.getDouble(2), resultSet.getDouble(3));
             node.setTagsFromString(resultSet.getString(4));
             sink.writeNode(node_id, node);
-            nodesSeen.add(node_id);
+            // nodesSeen.add(node_id);
         }
         LOG.info("End node iteration");
         resultSet.close();
@@ -112,7 +126,7 @@ public class PostgresOSMSource implements OSMEntitySource {
     }
 
     private void processWays () throws Exception {
-        final String sql = "select way_id, tags, nodes " +
+        final String sql = "select distinct way_id, tags, nodes " +
                 "from ways " +
                 "where rep_lat > ? and rep_lat < ? and rep_lon > ? and rep_lon < ?";
         final String sql2 = "select way_id, ways.tags, nodes from ways, nodes where nodes.node_id = ways.nodes[1] " +
@@ -122,7 +136,7 @@ public class PostgresOSMSource implements OSMEntitySource {
         preparedStatement.setDouble(2, maxLat);
         preparedStatement.setDouble(3, minLon);
         preparedStatement.setDouble(4, maxLon);
-        preparedStatement.setFetchSize(500);
+        //preparedStatement.setFetchSize(500);
         preparedStatement.execute();
         ResultSet resultSet = preparedStatement.getResultSet();
         while (resultSet.next()) {
