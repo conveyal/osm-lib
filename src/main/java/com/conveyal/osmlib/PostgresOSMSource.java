@@ -94,11 +94,9 @@ public class PostgresOSMSource implements OSMEntitySource {
         // You can see the difference between the two, that the nodes extend outside the bounding box in version A.
         // Adding the distinct keyword here lets the DB server do the filtering, but may be problematic on larger extracts.
         final String sqlA = "select node_id, lat, lon, tags from" +
-                "(select distinct unnest(nodes) as node_id from ways " +
-                "where rep_lat > ? and rep_lat < ? and rep_lon > ? and rep_lon < ?)" +
+                "(select unnest(nodes) as node_id from ways " +
+                "where rep_lat > ? and rep_lat < ? and rep_lon > ? and rep_lon < ? and tags like '%highway=%')" +
                 "included_nodes join nodes using (node_id)";
-        final String sqlB = "select node_id, lat, lon, tags from nodes where " +
-                "lat > ? and lat < ? and lon > ? and lon < ?";
         PreparedStatement preparedStatement = connection.prepareStatement(sqlA);
         preparedStatement.setDouble(1, minLat);
         preparedStatement.setDouble(2, maxLat);
@@ -112,12 +110,12 @@ public class PostgresOSMSource implements OSMEntitySource {
         while (resultSet.next()) {
             // Columns were specified in select, so we know their (one-based) sequence.
             long node_id = resultSet.getLong(1);
-            // if (nodesSeen.contains(node_id)) continue;
+            if (nodesSeen.contains(node_id)) continue;
             Node node = new Node();
             node.setLatLon(resultSet.getDouble(2), resultSet.getDouble(3));
             node.setTagsFromString(resultSet.getString(4));
             sink.writeNode(node_id, node);
-            // nodesSeen.add(node_id);
+            nodesSeen.add(node_id);
         }
         LOG.info("End node iteration");
         resultSet.close();
@@ -128,9 +126,8 @@ public class PostgresOSMSource implements OSMEntitySource {
     private void processWays () throws Exception {
         final String sql = "select way_id, tags, nodes " +
                 "from ways " +
-                "where rep_lat > ? and rep_lat < ? and rep_lon > ? and rep_lon < ?";
-        final String sql2 = "select way_id, ways.tags, nodes from ways, nodes where nodes.node_id = ways.nodes[1] " +
-                "and lat > ? and lat < ? and lon > ? and lon < ? ";
+                "where rep_lat > ? and rep_lat < ? and rep_lon > ? and rep_lon < ? " +
+                "and tags like '%highway=%'";
         PreparedStatement preparedStatement = connection.prepareStatement(sql);
         preparedStatement.setDouble(1, minLat);
         preparedStatement.setDouble(2, maxLat);
