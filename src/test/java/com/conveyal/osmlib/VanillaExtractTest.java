@@ -12,7 +12,7 @@ public class VanillaExtractTest {
 
     @BeforeClass
     public static void setUp() {
-        String[] args = {"jdbc:postgresql://localhost/osm-lib-test?user=osm_test&password=osm_test"};
+        String[] args = {"jdbc:postgresql://localhost/osm_lib_test?user=osm_test&password=osm_test"};
         VanillaExtract.main(args);
     }
 

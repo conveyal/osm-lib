@@ -12,7 +12,7 @@ public class PostgresTest {
 
     @Test
     public void canLoadFromFileIntoDatabase() {
-        String jdbcUrl = "jdbc:postgresql://localhost/osm-lib-test?user=osm_test&password=osm_test";
+        String jdbcUrl = "jdbc:postgresql://localhost/osm_lib_test?user=osm_test&password=osm_test";
         String[] args = {
             "./src/test/resources/bangor_maine.osm.pbf",
             jdbcUrl
