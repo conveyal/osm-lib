@@ -6,16 +6,11 @@ import org.apache.commons.dbcp2.PoolableConnectionFactory;
 import org.apache.commons.dbcp2.PoolingDataSource;
 import org.apache.commons.pool2.impl.GenericObjectPool;
 import org.glassfish.grizzly.http.Method;
-import org.glassfish.grizzly.http.server.HttpHandler;
-import org.glassfish.grizzly.http.server.HttpServer;
-import org.glassfish.grizzly.http.server.NetworkListener;
-import org.glassfish.grizzly.http.server.Request;
-import org.glassfish.grizzly.http.server.Response;
+import org.glassfish.grizzly.http.server.*;
 import org.glassfish.grizzly.http.util.HttpStatus;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import javax.sql.ConnectionPoolDataSource;
 import javax.sql.DataSource;
 import java.io.IOException;
 import java.io.OutputStream;
@@ -71,16 +66,14 @@ public class VanillaExtract {
         try {
             httpServer.start();
             LOG.info("VEX server running.");
-            Thread.currentThread().join();
-//            updateThread.interrupt();
+            //Thread.currentThread().join();
+            //updateThread.interrupt();
         } catch (BindException be) {
             LOG.error("Cannot bind to port {}. Is it already in use?", PORT);
         } catch (IOException ioe) {
             LOG.error("IO exception while starting server.");
-        } catch (InterruptedException ie) {
-            LOG.info("Interrupted, shutting down.");
         }
-        httpServer.shutdown();
+        // httpServer.shutdown();
     }
 
     // Planet files are named planet-150504.osm.pbf (YYMMDD format)
@@ -113,7 +106,6 @@ public class VanillaExtract {
             response.setContentType("application/osm");
             String uri = request.getDecodedRequestURI();
             int suffixIndex = uri.lastIndexOf('.');
-            String fileType = uri.substring(suffixIndex);
             OutputStream outStream = response.getOutputStream();
             try {
                 String[] coords = uri.substring(1, suffixIndex).split("[,;]");
