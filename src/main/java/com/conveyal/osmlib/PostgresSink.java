@@ -6,14 +6,12 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.*;
-import java.nio.ByteBuffer;
-import java.nio.CharBuffer;
-import java.nio.charset.*;
-import java.sql.*;
+import java.sql.Connection;
+import java.sql.DriverManager;
+import java.sql.SQLException;
+import java.sql.Statement;
 import java.util.Arrays;
-import java.util.regex.Matcher;
 import java.util.regex.Pattern;
-import java.util.stream.Collector;
 import java.util.stream.Collectors;
 
 /**
@@ -57,7 +55,7 @@ public class PostgresSink implements OSMEntitySink {
             // We use column names node_id, way_id, relation_id instead of just id to facilitate joins.
             statement.execute("create table updates (time timestamp, replication_epoch bigint, operation varchar)");
             statement.execute("create table nodes (node_id bigint, lat float(9), lon float(9), tags varchar)");
-            statement.execute("create table ways (way_id bigint, tags varchar, nodes bigint array)");
+            statement.execute("create table ways (way_id bigint, tags varchar, node_ids bigint array)");
             statement.execute("create table relations (relation_id bigint, tags varchar)");
             statement.execute("create table relation_members (relation_id bigint, type varchar, member_id bigint, role varchar)");
             connection.commit();
@@ -246,7 +244,10 @@ public class PostgresSink implements OSMEntitySink {
             // statement.execute("create index on nodes(lat, lon)");
             LOG.info("Assigning representative coordinates to ways...");
             statement.execute("alter table ways add column rep_lat float(9), add column rep_lon float(9)");
-            statement.execute("update ways set (rep_lat, rep_lon) = (select lat, lon from nodes where nodes.node_id = nodes[array_length(nodes, 1)/2])");
+            statement.execute("UPDATE ways " +
+                "SET rep_lat=subq.lat, rep_lon=subq.lon " +
+                "FROM (SELECT lat, lon, node_id FROM nodes) as subq " +
+                "WHERE subq.node_id = ways.node_ids[array_length(ways.node_ids, 1)/2]");
             LOG.info("Indexing representative coordinates of ways...");
             statement.execute("create index on ways(rep_lat, rep_lon)");
             connection.commit();

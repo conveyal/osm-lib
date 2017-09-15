@@ -1,26 +1,16 @@
 package com.conveyal.osmlib;
 
-import ch.qos.logback.core.db.ConnectionSource;
-import ch.qos.logback.core.recovery.ResilientFileOutputStream;
-import com.google.common.primitives.Longs;
-import gnu.trove.iterator.TLongIterator;
-import gnu.trove.list.TLongList;
-import gnu.trove.list.array.TLongArrayList;
 import gnu.trove.set.TLongSet;
 import gnu.trove.set.hash.TLongHashSet;
-import org.mapdb.Fun;
-import org.mapdb.Fun.Tuple3;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.sql.DataSource;
-import java.awt.font.FontRenderContext;
-import java.io.IOException;
-import java.sql.*;
+import java.sql.Connection;
+import java.sql.DriverManager;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
 import java.util.Arrays;
-import java.util.NavigableSet;
-import java.util.Set;
-import java.util.stream.Collectors;
 
 /**
  * An OSM source that pulls OSM entities out of a Postgres database, within a geographic window.
@@ -94,7 +84,7 @@ public class PostgresOSMSource implements OSMEntitySource {
         // You can see the difference between the two, that the nodes extend outside the bounding box in version A.
         // Adding the distinct keyword here lets the DB server do the filtering, but may be problematic on larger extracts.
         final String sqlA = "select node_id, lat, lon, tags from" +
-                "(select unnest(nodes) as node_id from ways " +
+                "(select unnest(node_ids) as node_id from ways " +
                 "where rep_lat > ? and rep_lat < ? and rep_lon > ? and rep_lon < ? and tags like '%highway=%')" +
                 "included_nodes join nodes using (node_id)";
         PreparedStatement preparedStatement = connection.prepareStatement(sqlA);
@@ -124,7 +114,7 @@ public class PostgresOSMSource implements OSMEntitySource {
     }
 
     private void processWays () throws Exception {
-        final String sql = "select way_id, tags, nodes " +
+        final String sql = "select way_id, tags, node_ids " +
                 "from ways " +
                 "where rep_lat > ? and rep_lat < ? and rep_lon > ? and rep_lon < ? " +
                 "and tags like '%highway=%'";
