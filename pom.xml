@@ -135,6 +135,7 @@
           </execution>
         </executions>
       </plugin>
+      <!-- This plugin generates code coverage reports during the test phase of maven. -->
       <plugin>
         <groupId>org.jacoco</groupId>
         <artifactId>jacoco-maven-plugin</artifactId>
@@ -162,12 +163,14 @@
   </repositories>
 
   <dependencies>
+    <!-- Rest Assured is an assertion library that makes testing web apis easy. -->
     <dependency>
       <groupId>io.rest-assured</groupId>
       <artifactId>rest-assured</artifactId>
       <version>3.0.3</version>
       <scope>test</scope>
     </dependency>
+    <!-- JUnit is a java testing framework. -->
     <dependency>
       <groupId>junit</groupId>
       <artifactId>junit</artifactId>
@@ -180,6 +183,13 @@
       <artifactId>trove4j</artifactId>
       <version>3.0.3</version>
     </dependency>
+    <!-- commons-math3 has the MersenneTwister class that is used in com.conveyal.osmlib.TestUtils.randomIdString -->
+    <dependency>
+      <groupId>org.apache.commons</groupId>
+      <artifactId>commons-math3</artifactId>
+      <version>3.0</version>
+    </dependency>
+    <!-- Hamcrest is an assertion library that prints pretty messages when assertions fail -->
     <dependency>
       <groupId>org.hamcrest</groupId>
       <artifactId>java-hamcrest</artifactId>
