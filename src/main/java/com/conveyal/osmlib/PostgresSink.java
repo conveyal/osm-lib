@@ -244,10 +244,11 @@ public class PostgresSink implements OSMEntitySink {
             // statement.execute("create index on nodes(lat, lon)");
             LOG.info("Assigning representative coordinates to ways...");
             statement.execute("alter table ways add column rep_lat float(9), add column rep_lon float(9)");
-            statement.execute("UPDATE ways " +
-                "SET rep_lat=subq.lat, rep_lon=subq.lon " +
-                "FROM (SELECT lat, lon, node_id FROM nodes) as subq " +
-                "WHERE subq.node_id = ways.node_ids[array_length(ways.node_ids, 1)/2]");
+            // use a subquery because a previous statement without a subquery was failing on travis for unknown reasons
+            statement.execute("update ways " +
+                "set rep_lat=subq.lat, rep_lon=subq.lon " +
+                "from (select lat, lon, node_id FROM nodes) as subq " +
+                "where subq.node_id = ways.node_ids[array_length(ways.node_ids, 1)/2]");
             LOG.info("Indexing representative coordinates of ways...");
             statement.execute("create index on ways(rep_lat, rep_lon)");
             connection.commit();
