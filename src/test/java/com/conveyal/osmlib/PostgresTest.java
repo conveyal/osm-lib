@@ -8,8 +8,14 @@ import java.sql.*;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.is;
 
+/**
+ * Tests that verify osm data can be saved and queried from postgres
+ */
 public class PostgresTest {
 
+    /**
+     * Test that this library can load data into postgres and that the count of records matches expectations
+     */
     @Test
     public void canLoadFromFileIntoDatabase() throws Exception {
         String newDBName = TestUtils.generateNewDB();
@@ -55,6 +61,9 @@ public class PostgresTest {
     }
 }
 
+/**
+ * Helper class to iterate through when testing whether the proper amount of records got loaded into a particular table.
+ */
 class TableTestCase {
     String tableName;
     int expectedNumNodes;
