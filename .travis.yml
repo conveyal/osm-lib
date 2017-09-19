@@ -8,11 +8,6 @@ jdk:
 before_install:
   - openssl aes-256-cbc -K $encrypted_3ec7d78ab93d_key -iv $encrypted_3ec7d78ab93d_iv -in maven-artifact-signing-key.asc.enc -out maven-artifact-signing-key.asc -d
   - gpg --import --batch maven-artifact-signing-key.asc
-  - psql -U postgres -c 'CREATE DATABASE osm_lib_test;'
-  - psql -U postgres -c "CREATE USER osm_test PASSWORD 'osm_test';"
-  - psql -U postgres -c 'CREATE ROLE osm_test_role;'
-  - psql -U postgres -c 'GRANT osm_test_role TO osm_test;'
-  - psql -U postgres -c 'GRANT ALL ON DATABASE osm_lib_test TO osm_test_role;'
 
 # Replace Travis's default Maven installation step with a no-op.
 # This avoids redundantly pre-running 'mvn install -DskipTests' every time.
