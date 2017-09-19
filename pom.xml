@@ -183,12 +183,6 @@
       <artifactId>trove4j</artifactId>
       <version>3.0.3</version>
     </dependency>
-    <!-- commons-math3 has the MersenneTwister class that is used in com.conveyal.osmlib.TestUtils.randomIdString -->
-    <dependency>
-      <groupId>org.apache.commons</groupId>
-      <artifactId>commons-math3</artifactId>
-      <version>3.0</version>
-    </dependency>
     <!-- Hamcrest is an assertion library that prints pretty messages when assertions fail -->
     <dependency>
       <groupId>org.hamcrest</groupId>
