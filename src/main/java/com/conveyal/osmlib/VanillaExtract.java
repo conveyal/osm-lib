@@ -55,7 +55,19 @@ public class VanillaExtract {
 //
 //        Thread updateThread = Updater.spawnUpdateThread(osm);
 
-        DataSource dataSource = createDataSource(args[0], null, null);
+        HttpServer httpServer = startServer(args[0]);
+        if (httpServer.isStarted()) {
+            try {
+                Thread.currentThread().join();
+            } catch (InterruptedException ie) {
+                LOG.info("Interrupted, shutting down.");
+            }
+        }
+        httpServer.shutdown();
+    }
+
+    public static HttpServer startServer(String jdbcUrl) {
+        DataSource dataSource = createDataSource(jdbcUrl, null, null);
 
         LOG.info("Starting VEX HTTP server on port {} of interface {}", PORT, BIND_ADDRESS);
         HttpServer httpServer = new HttpServer();
@@ -65,15 +77,12 @@ public class VanillaExtract {
         httpServer.getServerConfiguration().addHttpHandler(new VexHttpHandler(dataSource), "/*");
         try {
             httpServer.start();
-            LOG.info("VEX server running.");
-            //Thread.currentThread().join();
-            //updateThread.interrupt();
         } catch (BindException be) {
             LOG.error("Cannot bind to port {}. Is it already in use?", PORT);
         } catch (IOException ioe) {
             LOG.error("IO exception while starting server.");
         }
-        // httpServer.shutdown();
+        return httpServer;
     }
 
     // Planet files are named planet-150504.osm.pbf (YYMMDD format)

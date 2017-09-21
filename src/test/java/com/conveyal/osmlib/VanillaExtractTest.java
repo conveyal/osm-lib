@@ -44,8 +44,7 @@ public class VanillaExtractTest {
 
         // perform file to postgres load
         PostgresSink.main(postgresSinkArgs);
-        String[] args = {jdbcUrl};
-        VanillaExtract.main(args);
+        VanillaExtract.startServer(jdbcUrl);
     }
 
     /**
