@@ -6,16 +6,11 @@ import org.apache.commons.dbcp2.PoolableConnectionFactory;
 import org.apache.commons.dbcp2.PoolingDataSource;
 import org.apache.commons.pool2.impl.GenericObjectPool;
 import org.glassfish.grizzly.http.Method;
-import org.glassfish.grizzly.http.server.HttpHandler;
-import org.glassfish.grizzly.http.server.HttpServer;
-import org.glassfish.grizzly.http.server.NetworkListener;
-import org.glassfish.grizzly.http.server.Request;
-import org.glassfish.grizzly.http.server.Response;
+import org.glassfish.grizzly.http.server.*;
 import org.glassfish.grizzly.http.util.HttpStatus;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import javax.sql.ConnectionPoolDataSource;
 import javax.sql.DataSource;
 import java.io.IOException;
 import java.io.OutputStream;
@@ -60,7 +55,19 @@ public class VanillaExtract {
 //
 //        Thread updateThread = Updater.spawnUpdateThread(osm);
 
-        DataSource dataSource = createDataSource(args[0], null, null);
+        HttpServer httpServer = startServer(args[0]);
+        if (httpServer.isStarted()) {
+            try {
+                Thread.currentThread().join();
+            } catch (InterruptedException ie) {
+                LOG.info("Interrupted, shutting down.");
+            }
+        }
+        httpServer.shutdown();
+    }
+
+    public static HttpServer startServer(String jdbcUrl) {
+        DataSource dataSource = createDataSource(jdbcUrl, null, null);
 
         LOG.info("Starting VEX HTTP server on port {} of interface {}", PORT, BIND_ADDRESS);
         HttpServer httpServer = new HttpServer();
@@ -70,17 +77,12 @@ public class VanillaExtract {
         httpServer.getServerConfiguration().addHttpHandler(new VexHttpHandler(dataSource), "/*");
         try {
             httpServer.start();
-            LOG.info("VEX server running.");
-            Thread.currentThread().join();
-//            updateThread.interrupt();
         } catch (BindException be) {
             LOG.error("Cannot bind to port {}. Is it already in use?", PORT);
         } catch (IOException ioe) {
             LOG.error("IO exception while starting server.");
-        } catch (InterruptedException ie) {
-            LOG.info("Interrupted, shutting down.");
         }
-        httpServer.shutdown();
+        return httpServer;
     }
 
     // Planet files are named planet-150504.osm.pbf (YYMMDD format)
@@ -113,7 +115,6 @@ public class VanillaExtract {
             response.setContentType("application/osm");
             String uri = request.getDecodedRequestURI();
             int suffixIndex = uri.lastIndexOf('.');
-            String fileType = uri.substring(suffixIndex);
             OutputStream outStream = response.getOutputStream();
             try {
                 String[] coords = uri.substring(1, suffixIndex).split("[,;]");
