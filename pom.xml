@@ -168,12 +168,6 @@
     	<artifactId>guava</artifactId>
     	<version>24.0-jre</version>
     </dependency>
-    <!-- JTS does 2D geometry and topology. -->
-    <dependency>
-      <groupId>org.locationtech.jts</groupId>
-      <artifactId>jts-core</artifactId>
-      <version>1.15.0</version>
-    </dependency>
     <!-- MapDB is a pure Java database backend for storing objects out of heap memory. -->
     <dependency>
     	<groupId>org.mapdb</groupId>
