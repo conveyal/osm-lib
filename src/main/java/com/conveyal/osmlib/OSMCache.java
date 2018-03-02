@@ -1,7 +1,7 @@
 package com.conveyal.osmlib;
 
 import com.amazonaws.services.s3.AmazonS3;
-import com.amazonaws.services.s3.AmazonS3Client;
+import com.amazonaws.services.s3.AmazonS3ClientBuilder;
 import com.amazonaws.services.s3.model.GetObjectRequest;
 import com.google.common.cache.Cache;
 import com.google.common.cache.CacheBuilder;
@@ -11,18 +11,17 @@ import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
-import java.nio.file.CopyOption;
 import java.nio.file.Files;
 import java.util.concurrent.ExecutionException;
 
 /**
- * Created by matthewc on 7/18/16.
+ * TODO this should be moved out of osm-lib so we don't need to have a dependency on AWS S3 SDK.
  */
 public class OSMCache {
     public final String bucket;
     public final File cacheDir;
 
-    private AmazonS3 s3 = new AmazonS3Client();
+    private AmazonS3 s3 = AmazonS3ClientBuilder.defaultClient();
 
     public OSMCache (String bucket, File cacheDir) {
         this.bucket = bucket;

@@ -19,8 +19,13 @@ import java.util.Map;
  * so we use multiple RoaringBitmaps containing the low 32 bits, stored in a map from the high
  * 32 bits to a roaringbitmap. Since the OSM IDs are concentrated towards the bottom of the long
  * space (i.e. they only need, so far, one more bit than an int provides), only a few blocks are used.
+ *
+ * This home-made implementation is probably not particularly fast, and the library now has a 64 bit mode:
+ * https://github.com/RoaringBitmap/RoaringBitmap#64-bit-integers-long
+ * TODO convert to standard 64-bit extension in library
  */
 public class NodeTracker {
+
     private static final Logger LOG = LoggerFactory.getLogger(NodeTracker.class);
 
     private Map<Integer, RoaringBitmap> blocks = new HashMap<>();
