@@ -143,6 +143,7 @@
   </repositories>
 
   <dependencies>
+    <!-- Junit is for unit testing. -->
     <dependency>
       <groupId>junit</groupId>
       <artifactId>junit</artifactId>
@@ -155,59 +156,67 @@
       <artifactId>trove4j</artifactId>
       <version>3.0.3</version>
     </dependency>
+    <!-- JCommander allows creating standard command line interfaces with switches etc. -->
     <dependency>
     	<groupId>com.beust</groupId>
     	<artifactId>jcommander</artifactId>
     	<version>1.30</version>
     </dependency>
+    <!-- Guava is a set of core libraries that includes new collection types, among other things. -->
     <dependency>
     	<groupId>com.google.guava</groupId>
     	<artifactId>guava</artifactId>
     	<version>18.0</version>
     </dependency>
+    <!-- JTS does 2D geometry and topology. -->
     <dependency>
     	<groupId>com.vividsolutions</groupId>
     	<artifactId>jts</artifactId>
     	<version>1.13</version>
     </dependency>
+    <!-- MapDB is a pure Java database backend for storing objects. -->
     <dependency>
     	<groupId>org.mapdb</groupId>
     	<artifactId>mapdb</artifactId>
     	<version>1.0.6</version>
     </dependency>
-    <!-- Logging API (no implementation, this is a library) -->
+    <!-- Logging API. -->
     <dependency>
       <groupId>org.slf4j</groupId>
       <artifactId>slf4j-api</artifactId>
       <version>1.7.12</version>
     </dependency>
+    <!-- Logging API implementation (really we shouldn't even specify an implementation as this is a library, but it does get run stand-alone for serving up OSM data. -->
     <dependency>
       <groupId>ch.qos.logback</groupId>
       <artifactId>logback-classic</artifactId>
       <version>1.0.13</version>
     </dependency>
-    <!-- OSM PBF format support -->
+    <!-- OSM PBF format support (needs to be updated). -->
     <dependency>
       <groupId>org.openstreetmap.osmosis</groupId>
       <artifactId>osmosis-osm-binary</artifactId>
       <version>0.43.1</version>
     </dependency>
+    <!-- Can this be completely removed? Is this a runtime dependency of osmosis-osm-binary? -->
     <dependency>
       <groupId>com.google.protobuf</groupId>
       <artifactId>protobuf-java</artifactId>
       <version>2.6.1</version>
     </dependency>
-    <!-- for serving up OSM extracts via HTTP -->
+    <!-- HTTP server for providing OSM extracts over HTTP. -->
     <dependency>
       <groupId>org.glassfish.grizzly</groupId>
       <artifactId>grizzly-http-server</artifactId>
       <version>2.3.16</version>
     </dependency>
+    <!-- Amazon AWS S3 storage SDK. We should really not use this here, it will conflict with other versions higher in the dependency tree. -->
     <dependency>
       <groupId>com.amazonaws</groupId>
       <artifactId>aws-java-sdk-s3</artifactId>
       <version>1.11.18</version>
     </dependency>
+    <!-- Compressed bitmaps (bisets) used to track which OSM IDs have been encountered during large operations. -->
     <dependency>
       <groupId>org.roaringbitmap</groupId>
       <artifactId>RoaringBitmap</artifactId>
