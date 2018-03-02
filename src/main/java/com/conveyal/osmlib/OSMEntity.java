@@ -88,6 +88,19 @@ public abstract class OSMEntity implements Serializable {
         tags.add(new Tag(key, value));
     }
 
+    public void addOrReplaceTag (String key, String value) {
+        if (tags == null) {
+            tags = Lists.newArrayList();
+        }
+        for (Tag tag : tags) {
+            if (tag.key.equalsIgnoreCase(key)) {
+                tag.value = value;
+                return;
+            }
+        }
+        tags.add(new Tag(key, value));
+    }
+
     public boolean tagsEqual (OSMEntity other) {
         if (this.hasNoTags()) {
             return other.hasNoTags();
