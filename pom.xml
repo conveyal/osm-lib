@@ -205,13 +205,6 @@
       <artifactId>grizzly-http-server</artifactId>
       <version>2.4.3</version>
     </dependency>
-    <!-- Amazon AWS S3 storage SDK. We should really not use this here,
-      it will conflict with other versions higher in the dependency tree. -->
-    <dependency>
-      <groupId>com.amazonaws</groupId>
-      <artifactId>aws-java-sdk-s3</artifactId>
-      <version>1.11.288</version>
-    </dependency>
     <!-- Compressed bitmaps (bisets) used to track which OSM IDs have been encountered during large operations. -->
     <dependency>
       <groupId>org.roaringbitmap</groupId>
