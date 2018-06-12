@@ -172,7 +172,7 @@
     <dependency>
     	<groupId>org.mapdb</groupId>
     	<artifactId>mapdb</artifactId>
-    	<version>1.0.6</version>
+    	<version>1.0.8</version>
     </dependency>
     <!-- Logging API. -->
     <dependency>
@@ -191,7 +191,7 @@
     <dependency>
       <groupId>org.openstreetmap.osmosis</groupId>
       <artifactId>osmosis-osm-binary</artifactId>
-      <version>0.46</version>
+      <version>0.45</version>
     </dependency>
     <!-- HTTP server for providing OSM extracts over HTTP. -->
     <dependency>
