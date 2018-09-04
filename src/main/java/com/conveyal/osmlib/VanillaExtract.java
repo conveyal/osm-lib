@@ -104,6 +104,7 @@ public class VanillaExtract {
 
             response.setContentType("application/osm");
             String uri = request.getDecodedRequestURI();
+            LOG.info("VEX request: {}", uri);
             int suffixIndex = uri.lastIndexOf('.');
             String fileType = uri.substring(suffixIndex);
             OutputStream outStream = response.getOutputStream();
