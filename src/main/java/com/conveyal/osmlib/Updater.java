@@ -15,6 +15,7 @@ import java.net.URL;
 import java.text.SimpleDateFormat;
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
@@ -133,7 +134,7 @@ public class Updater implements Runnable {
         Diff latest = fetchState(timescale, 0);
         if (latest == null) {
             LOG.error("Could not find {}-scale updates from OSM!", timescale);
-            return new ArrayList<>();
+            return Collections.EMPTY_LIST;
         }
         // Only check specific updates if the overall state for this timescale implies there are new ones.
         if (latest.timestamp > osm.timestamp.get()) {
