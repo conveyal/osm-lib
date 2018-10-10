@@ -104,6 +104,7 @@ public class VanillaExtract {
 
             response.setContentType("application/osm");
             String uri = request.getDecodedRequestURI();
+            LOG.info("VEX request: {}", uri);
             int suffixIndex = uri.lastIndexOf('.');
             String fileType = uri.substring(suffixIndex);
             OutputStream outStream = response.getOutputStream();
@@ -130,6 +131,8 @@ public class VanillaExtract {
                 tileSource.copyTo(sink);
                 response.setStatus(HttpStatus.OK_200);
             } catch (Exception ex) {
+                LOG.error("Could not process request with bad URI format {}.", uri);
+                response.setContentType("text/plain");
                 response.setStatus(HttpStatus.BAD_REQUEST_400);
                 outStream.write("URI format: /min_lat,min_lon,max_lat,max_lon[.pbf|.vex] (all coords in decimal degrees)\n".getBytes());
                 ex.printStackTrace();

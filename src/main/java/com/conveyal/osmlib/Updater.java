@@ -15,6 +15,7 @@ import java.net.URL;
 import java.text.SimpleDateFormat;
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
@@ -34,7 +35,7 @@ public class Updater implements Runnable {
 
     private static final Logger LOG = LoggerFactory.getLogger(Updater.class);
 
-    public static final String BASE_URL = "http://planet.openstreetmap.org/replication/";
+    public static final String BASE_URL = "https://planet.openstreetmap.org/replication/";
 
     private static final Instant MIN_REPLICATION_INSTANT = Instant.parse("2015-05-01T00:00:00.00Z");
 
@@ -72,8 +73,8 @@ public class Updater implements Runnable {
 
     public Diff fetchState(String timescale, int sequenceNumber) {
         Diff diffState = new Diff();
+        StringBuilder sb = new StringBuilder(BASE_URL);
         try {
-            StringBuilder sb = new StringBuilder(BASE_URL);
             sb.append(timescale);
             sb.append("/");
             if (sequenceNumber > 0) {
@@ -100,11 +101,17 @@ public class Updater implements Runnable {
                 if (fields.length != 2) continue;
                 kvs.put(fields[0], fields[1]);
             }
-            String dateTimeString = kvs.get("timestamp").replace("\\:", ":");
+            String timestamp = kvs.get("timestamp");
+            if (timestamp == null) {
+                LOG.warn("Timestamp field not found in {}", url.toString());
+                return null;
+            }
+            String dateTimeString = timestamp.replace("\\:", ":");
             diffState.timestamp = DatatypeConverter.parseDateTime(dateTimeString).getTimeInMillis() / 1000;
             diffState.sequenceNumber = Integer.parseInt(kvs.get("sequenceNumber"));
             diffState.timescale = timescale;
         } catch (Exception e) {
+            LOG.warn("Could not process OSM state: {}", sb.toString());
             e.printStackTrace();
             return null;
         }
@@ -125,6 +132,10 @@ public class Updater implements Runnable {
     public List<Diff> findDiffs (String timescale) {
         List<Diff> workQueue = new ArrayList<Diff>();
         Diff latest = fetchState(timescale, 0);
+        if (latest == null) {
+            LOG.error("Could not find {}-scale updates from OSM!", timescale);
+            return Collections.EMPTY_LIST;
+        }
         // Only check specific updates if the overall state for this timescale implies there are new ones.
         if (latest.timestamp > osm.timestamp.get()) {
             // Working backward, find all updates that are dated after the current database timestamp.
