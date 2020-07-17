@@ -191,7 +191,7 @@
     <dependency>
       <groupId>org.openstreetmap.osmosis</groupId>
       <artifactId>osmosis-osm-binary</artifactId>
-      <version>0.45</version>
+      <version>0.48.2</version>
     </dependency>
     <!-- HTTP server for providing OSM extracts over HTTP. -->
     <dependency>
@@ -204,6 +204,12 @@
       <groupId>org.roaringbitmap</groupId>
       <artifactId>RoaringBitmap</artifactId>
       <version>0.7.3</version>
+    </dependency>
+    <!-- Needed to use DatatypeConverter -->
+    <dependency>
+      <groupId>javax.xml.bind</groupId>
+      <artifactId>jaxb-api</artifactId>
+      <version>2.3.0</version>
     </dependency>
   </dependencies>
 </project>
