@@ -3,7 +3,6 @@ package com.conveyal.osmlib;
 import com.google.common.collect.Lists;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.xml.sax.helpers.DefaultHandler;
 
 import javax.xml.bind.DatatypeConverter;
 import javax.xml.parsers.SAXParser;
@@ -91,7 +90,9 @@ public class Updater implements Runnable {
                 LOG.debug("Checking replication state for timescale {}", timescale);
             }
             sb.append("state.txt");
-            URL url = new URL(sb.toString());
+            String replicationUrl = sb.toString();
+            URL url = new URL(replicationUrl);
+            LOG.info("Requesting data from {}", replicationUrl);
             BufferedReader reader = new BufferedReader(new InputStreamReader(url.openStream()));
             String line;
             Map<String, String> kvs = new HashMap<>();
@@ -101,6 +102,7 @@ public class Updater implements Runnable {
                 if (fields.length != 2) continue;
                 kvs.put(fields[0], fields[1]);
             }
+            LOG.info("Received data from {}", replicationUrl);
             String timestamp = kvs.get("timestamp");
             if (timestamp == null) {
                 LOG.warn("Timestamp field not found in {}", url.toString());
@@ -141,7 +143,7 @@ public class Updater implements Runnable {
             // Working backward, find all updates that are dated after the current database timestamp.
             for (int seq = latest.sequenceNumber; seq > 0; seq--) {
                 Diff diff = fetchState(timescale, seq);
-                if (diff.timestamp <= osm.timestamp.get()) break;
+                if (diff == null || diff.timestamp <= osm.timestamp.get()) break;
                 workQueue.add(diff);
             }
         }
@@ -155,16 +157,24 @@ public class Updater implements Runnable {
             SAXParserFactory factory = SAXParserFactory.newInstance();
             factory.setNamespaceAware(true);
             SAXParser saxParser = factory.newSAXParser();
-            DefaultHandler handler = new OSMChangeParser(osm);
+            OSMChangeParser handler = new OSMChangeParser(osm);
             for (Diff state : workQueue) {
                 LOG.info("Applying {} update for {}", state.timescale, getDateString(state.timestamp * 1000));
+                LOG.info("Requesting data from {}", state.url);
                 InputStream inputStream = new GZIPInputStream(state.url.openStream());
                 saxParser.parse(inputStream, handler);
                 // Move the DB timestamp forward to that of the update that was applied
                 osm.timestamp.set(state.timestamp);
                 // Record the last update applied so we can jump straight to the next one
                 lastApplied = state;
+                LOG.info(
+                    "Applied {} update for {}. {} total applied.",
+                    state.timescale,
+                    getDateString(state.timestamp * 1000),
+                    handler.nParsed
+                );
             }
+            LOG.info("Finished applying diffs. {} total applied.", handler.nParsed);
         } catch (Exception e) {
             e.printStackTrace();
         }
@@ -218,7 +228,7 @@ public class Updater implements Runnable {
             }
             int sleepSeconds = 60 - phaseErrorSeconds; // reduce 1-minute polling wait by phase difference
             if (sleepSeconds > 1) {
-                LOG.debug("Sleeping {} seconds", sleepSeconds);
+                LOG.info("Sleeping {} seconds", sleepSeconds);
                 try {
                     Thread.sleep(sleepSeconds * 1000);
                 } catch (InterruptedException e) {
