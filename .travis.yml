@@ -2,7 +2,7 @@ language: java
 
 # Travis doesn't (yet) support OpenJDK 8
 jdk:
-  - oraclejdk11
+  - openjdk8
 
 # Decrypt and import the artifact signing certificate before running the build
 before_install:
