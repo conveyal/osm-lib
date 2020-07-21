@@ -90,10 +90,10 @@ public class Updater implements Runnable {
                 LOG.debug("Checking replication state for timescale {}", timescale);
             }
             sb.append("state.txt");
-            String replicationUrl = sb.toString();
-            URL url = new URL(replicationUrl);
-            LOG.info("Requesting data from {}", replicationUrl);
-            BufferedReader reader = new BufferedReader(new InputStreamReader(url.openStream()));
+            String planetReplicationUrlString = sb.toString();
+            URL planetReplicationUrl = new URL(planetReplicationUrlString);
+            LOG.info("Requesting data from {}", planetReplicationUrlString);
+            BufferedReader reader = new BufferedReader(new InputStreamReader(planetReplicationUrl.openStream()));
             String line;
             Map<String, String> kvs = new HashMap<>();
             while ((line = reader.readLine()) != null) {
@@ -102,10 +102,10 @@ public class Updater implements Runnable {
                 if (fields.length != 2) continue;
                 kvs.put(fields[0], fields[1]);
             }
-            LOG.info("Received data from {}", replicationUrl);
+            LOG.info("Received data from {}", planetReplicationUrlString);
             String timestamp = kvs.get("timestamp");
             if (timestamp == null) {
-                LOG.warn("Timestamp field not found in {}", url.toString());
+                LOG.warn("Timestamp field not found in {}", planetReplicationUrl.toString());
                 return null;
             }
             String dateTimeString = timestamp.replace("\\:", ":");
