@@ -1,6 +1,4 @@
 language: java
-
-# Travis doesn't (yet) support OpenJDK 8
 jdk:
   - openjdk8
 
