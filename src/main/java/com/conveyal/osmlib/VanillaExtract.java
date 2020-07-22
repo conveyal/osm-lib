@@ -105,11 +105,14 @@ public class VanillaExtract {
             response.setContentType("application/osm");
             String uri = request.getDecodedRequestURI();
             LOG.info("VEX request: {}", uri);
-            int suffixIndex = uri.lastIndexOf('.');
-            String fileType = uri.substring(suffixIndex);
             OutputStream outStream = response.getOutputStream();
             try {
+                int suffixIndex = uri.lastIndexOf('.');
+                String fileType = uri.substring(suffixIndex);
                 String[] coords = uri.substring(1, suffixIndex).split("[,;]");
+                if (coords.length < 4) {
+                    throw new IllegalArgumentException("Must provide a bounding box with 4 coordinates");
+                }
                 double minLat = Double.parseDouble(coords[0]);
                 double minLon = Double.parseDouble(coords[1]);
                 double maxLat = Double.parseDouble(coords[2]);
@@ -122,19 +125,22 @@ public class VanillaExtract {
                     response.setStatus(HttpStatus.OK_200);
                     return;
                 }
-                /* TODO filter out buildings on the server side. */
-                boolean buildings = coords.length > 4 && "buildings".equalsIgnoreCase(coords[4]);
 
                 OSMEntitySink sink = OSMEntitySink.forStream(uri, outStream);
                 TileOSMSource tileSource = new TileOSMSource(osm);
                 tileSource.setBoundingBox(minLat, minLon, maxLat, maxLon);
                 tileSource.copyTo(sink);
                 response.setStatus(HttpStatus.OK_200);
-            } catch (Exception ex) {
+            } catch (IllegalArgumentException ex) {
                 LOG.error("Could not process request with bad URI format {}.", uri);
                 response.setContentType("text/plain");
                 response.setStatus(HttpStatus.BAD_REQUEST_400);
                 outStream.write("URI format: /min_lat,min_lon,max_lat,max_lon[.pbf|.vex] (all coords in decimal degrees)\n".getBytes());
+            } catch (Exception ex) {
+                LOG.error("An internal error occurred while processing {}.", uri);
+                response.setContentType("text/plain");
+                response.setStatus(HttpStatus.INTERNAL_SERVER_ERROR_500);
+                outStream.write("An internal error occurred.".getBytes());
                 ex.printStackTrace();
             } finally {
                 outStream.close();
